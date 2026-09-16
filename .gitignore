@@ -1,0 +1,67 @@
+# ============================
+# Python cache & bytecode
+# ============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ============================
+# Virtual environments
+# ============================
+venv/
+.env/
+.env.bak/
+.venv/
+
+# ============================
+# Logs
+# ============================
+logs/
+*.log
+
+# ============================
+# Config & keys (sensitive)
+# ============================
+config/keys.json
+config/*.pem
+config/*.key
+
+# ============================
+# Test / coverage
+# ============================
+.coverage
+coverage.xml
+htmlcov/
+pytest_cache/
+.tox/
+.nox/
+
+# ============================
+# Build / packaging
+# ============================
+build/
+dist/
+*.egg-info/
+*.egg
+
+# ============================
+# IDE / editor files
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ============================
+# OS-specific
+# ============================
+.DS_Store
+Thumbs.db
+
+# ============================
+# Temporary files
+# ============================
+*.tmp
+*.bak
+*.old
