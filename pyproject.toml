@@ -1,0 +1,19 @@
+[project]
+name = "secure-message-gateway"
+version = "0.1.0"
+description = "Secure message gateway with HMAC signing and validation"
+authors = [
+    { name = "Ingrid Dinca", email = "dincaingrid24@gmail.com" }
+]
+requires-python = ">=3.10"
+
+[project.dependencies]
+pytest = "^8.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
