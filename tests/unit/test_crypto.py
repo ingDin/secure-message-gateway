@@ -1,3 +1,30 @@
+"""
+Unit tests for secure_gateway.crypto.
+
+Coverage:
+- HMAC key loading:
+    * valid keys (different sizes)
+    * missing file
+    * invalid JSON
+    * missing 'hmac_key'
+    * invalid hex / empty / null / non-string values
+
+- HMAC signing:
+    * deterministic output (64 hex chars)
+    * independent of key order in payload
+    * changes when payload changes
+    * changes when key changes
+    * known-answer test (RFC 2104-style)
+
+- HMAC verification:
+    * success case
+    * failure when MAC is modified
+    * failure when payload is modified
+
+These tests guarantee deterministic, secure, and predictable behavior
+for the crypto module, ensuring message integrity and replay protection.
+"""
+
 import pytest
 import json
 
@@ -17,7 +44,8 @@ class TestLoadHmacKey:
         indirect=True,
     )
     def test_load_key(self, hmac_test_env):
-        config_dir, expected_key = hmac_test_env
+        config_dir = hmac_test_env["config_dir"]
+        expected_key = hmac_test_env["key"]
 
         key = get_hmac_key(config_dir)
 
@@ -99,6 +127,8 @@ class TestSignMessage:
         )
 
     def test_sign_message_known_answer(self):
+        # RFC 2104-style known answer test (deterministic HMAC)
+
         key = b"Jefe"
         payload = {
             "message": "what do ya want for nothing?",
@@ -118,18 +148,18 @@ class TestVerifyMessage:
         return sign_message(sample_payload, hmac_key)
 
     def test_verify_message_success(
-            self,
-            hmac_key,
-            sample_payload,
-            valid_mac,
+        self,
+        hmac_key,
+        sample_payload,
+        valid_mac,
     ):
         verify_message(sample_payload, hmac_key, valid_mac)
 
     def test_verify_message_failure_when_mac_is_modified(
-            self,
-            hmac_key,
-            sample_payload,
-            valid_mac,
+        self,
+        hmac_key,
+        sample_payload,
+        valid_mac,
     ):
         bad_mac = valid_mac[:-1] + (
             "0" if valid_mac[-1] != "0" else "1"
@@ -139,10 +169,10 @@ class TestVerifyMessage:
             verify_message(sample_payload, hmac_key, bad_mac)
 
     def test_verify_message_failure_when_payload_is_modified(
-            self,
-            hmac_key,
-            sample_payload,
-            valid_mac,
+        self,
+        hmac_key,
+        sample_payload,
+        valid_mac,
     ):
         tampered_payload = {
             **sample_payload,
