@@ -37,6 +37,10 @@ from secure_gateway.crypto import (
 )
 
 
+# ---------------------------------------------------------
+# Tests for get_hmac_key
+# ---------------------------------------------------------
+
 class TestLoadHmacKey:
     @pytest.mark.parametrize(
         "hmac_test_env",
@@ -56,14 +60,14 @@ class TestLoadHmacKey:
         with pytest.raises(KeyLoadError):
             get_hmac_key(tmp_path)
 
-    def test_load_key_invalid_json(self, keys_file):
-        config_dir = keys_file("{invalid json")
+    def test_load_key_invalid_json(self, write_keys_fixture):
+        config_dir = write_keys_fixture("{invalid json")
 
         with pytest.raises(KeyLoadError):
             get_hmac_key(config_dir)
 
-    def test_load_key_missing_hmac_key(self, keys_file):
-        config_dir = keys_file('{"other_key": "abc"}')
+    def test_load_key_missing_hmac_key(self, write_keys_fixture):
+        config_dir = write_keys_fixture('{"other_key": "abc"}')
 
         with pytest.raises(KeyLoadError):
             get_hmac_key(config_dir)
@@ -77,12 +81,16 @@ class TestLoadHmacKey:
             '{"hmac_key": 123}',
         ],
     )
-    def test_load_key_invalid_hmac_key(self, keys_file, content):
-        config_dir = keys_file(content)
+    def test_load_key_invalid_hmac_key(self, write_keys_fixture, content):
+        config_dir = write_keys_fixture(content)
 
         with pytest.raises(KeyLoadError):
             get_hmac_key(config_dir)
 
+
+# ---------------------------------------------------------
+# Tests for sign_message
+# ---------------------------------------------------------
 
 class TestSignMessage:
     def test_sign_message(self, hmac_key, sample_payload):
@@ -141,6 +149,10 @@ class TestSignMessage:
 
         assert sign_message(payload, key) == expected_mac
 
+
+# ---------------------------------------------------------
+# Tests for verify_message
+# ---------------------------------------------------------
 
 class TestVerifyMessage:
     @pytest.fixture

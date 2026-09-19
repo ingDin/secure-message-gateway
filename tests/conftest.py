@@ -7,23 +7,37 @@ DEFAULT_HMAC_KEY_SIZE = 32
 
 
 # ---------------------------------------------------------
-# Single helper: writes keys.json (raw or JSON)
+# Generic JSON writer (reusable for keys.json, freshness.json, etc.)
 # ---------------------------------------------------------
-def write_keys(directory: Path, content) -> Path:
+def write_json(directory: Path, filename: str, content) -> Path:
     """
-    Writes keys.json inside directory.
+    Writes <filename> inside directory.
     - If content is dict → JSON serialize
     - If content is str  → write raw text
     """
-    keys_path = directory / "keys.json"
+    file_path = directory / filename
 
     if isinstance(content, dict):
         text = json.dumps(content)
     else:
         text = content
 
-    keys_path.write_text(text, encoding="utf-8")
-    return keys_path
+    file_path.write_text(text, encoding="utf-8")
+    return file_path
+
+
+# ---------------------------------------------------------
+# Backwards-compatible helper for crypto
+# ---------------------------------------------------------
+def write_keys(directory: Path, content):
+    return write_json(directory, "keys.json", content)
+
+
+# ---------------------------------------------------------
+# New helper for freshness
+# ---------------------------------------------------------
+def write_freshness(directory: Path, content):
+    return write_json(directory, "freshness.json", content)
 
 
 # ---------------------------------------------------------
@@ -56,10 +70,9 @@ def hmac_test_env(hmac_config_dir, request):
 # Fixture: negative tests (invalid JSON, missing fields)
 # ---------------------------------------------------------
 @pytest.fixture
-def keys_file(tmp_path):
+def write_keys_fixture(tmp_path):
     def _write(raw_content: str):
-        write_keys(tmp_path, raw_content)
-        return tmp_path
+        return write_keys(tmp_path, raw_content)
     return _write
 
 
@@ -77,3 +90,13 @@ def hmac_key(hmac_test_env):
 @pytest.fixture
 def sample_payload():
     return {"id": 1, "msg": "hello"}
+
+
+# ---------------------------------------------------------
+# Fixture: writer for freshness.json (used in tests)
+# ---------------------------------------------------------
+@pytest.fixture
+def write_freshness_fixture(tmp_path):
+    def _write(content):
+        return write_freshness(tmp_path, content)
+    return _write
