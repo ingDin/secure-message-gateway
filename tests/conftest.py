@@ -2,6 +2,7 @@ import json
 import secrets
 import pytest
 from pathlib import Path
+from secure_gateway.logger import AuditLogger
 
 DEFAULT_HMAC_KEY_SIZE = 32
 
@@ -100,3 +101,24 @@ def write_freshness_fixture(tmp_path):
     def _write(content):
         return write_freshness(tmp_path, content)
     return _write
+
+
+# ---------------------------------------------------------
+# Fixture: enterprise logger environment
+# ---------------------------------------------------------
+@pytest.fixture
+def logger_env(tmp_path):
+    class LoggerEnv:
+        def __init__(self, base):
+            self.log_path = base / "audit.log"
+            self.logger = AuditLogger(self.log_path)
+
+        def read_lines(self):
+            if not self.log_path.exists():
+                return []
+            return self.log_path.read_text(encoding="utf-8").splitlines()
+
+        def read_json_lines(self):
+            return [json.loads(line) for line in self.read_lines()]
+
+    return LoggerEnv(tmp_path)
