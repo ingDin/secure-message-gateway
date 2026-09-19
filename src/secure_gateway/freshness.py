@@ -3,22 +3,7 @@
 from pathlib import Path
 import json
 from typing import Any, Dict
-
-
-# ---------------------------------------------------------
-# Exception hierarchy for freshness / replay protection
-# ---------------------------------------------------------
-class FreshnessError(Exception):
-    """Base exception for freshness-related errors."""
-
-
-class CounterLoadError(FreshnessError):
-    """Raised when counter cannot be loaded."""
-
-
-class CounterReplayError(FreshnessError):
-    """Raised when a replay or stale counter is detected."""
-
+from secure_gateway.exceptions import FreshnessError
 
 # ---------------------------------------------------------
 # Internal loader: read monotonic counter from freshness.json
@@ -36,15 +21,15 @@ def _load_counter(counter_path: Path) -> int:
         with counter_path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except (OSError, json.JSONDecodeError) as exc:
-        raise CounterLoadError(f"Failed to load counter from {counter_path}") from exc
+        raise FreshnessError(f"Failed to load counter from {counter_path}") from exc
 
     if "counter" not in data:
-        raise CounterLoadError("Missing 'counter' field in freshness.json")
+        raise FreshnessError("Missing 'counter' field in freshness.json")
 
     try:
         value = int(data["counter"])
     except (TypeError, ValueError) as exc:
-        raise CounterLoadError("Invalid 'counter' value in freshness.json") from exc
+        raise FreshnessError("Invalid 'counter' value in freshness.json") from exc
 
     return value
 
@@ -79,7 +64,7 @@ def verify_freshness(counter: int, last_counter: int) -> None:
     :raises CounterReplayError: if counter <= last_counter
     """
     if counter <= last_counter:
-        raise CounterReplayError(
+        raise FreshnessError(
             f"Replay detected: incoming={counter}, last={last_counter}"
         )
 

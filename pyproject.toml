@@ -7,8 +7,10 @@ authors = [
 ]
 requires-python = ">=3.10"
 
-[project.dependencies]
-pytest = "^8.0"
+# PEP 621: dependencies must be an array, not a table
+dependencies = [
+    "pytest>=8.0",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

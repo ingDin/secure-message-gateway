@@ -14,17 +14,6 @@ class IncomingMessage:
 
 
 # ---------------------------------------------------------
-# Signed message (after crypto verification)
-# ---------------------------------------------------------
-@dataclass
-class SignedMessage:
-    id: int
-    msg: str
-    counter: int
-    payload: Dict[str, Any]
-
-
-# ---------------------------------------------------------
 # Gateway response (final output)
 # ---------------------------------------------------------
 @dataclass

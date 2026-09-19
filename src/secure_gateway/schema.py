@@ -1,4 +1,3 @@
-# schema.py
 """
 JSON Schema validator for gateway incoming messages.
 
@@ -9,24 +8,22 @@ mandatory structure before entering the crypto and freshness pipeline.
 import jsonschema
 from jsonschema import validate, ValidationError
 
-from exceptions import SchemaError
-
+from secure_gateway.exceptions import SchemaError
 
 # ---------------------------------------------------------
-# JSON Schema definition (enterprise-grade, strict)
+# JSON Schema definition (aligned with IncomingMessage)
 # ---------------------------------------------------------
 MESSAGE_SCHEMA = {
     "type": "object",
     "properties": {
-        "sender": {"type": "string", "minLength": 1},
+        "id": {"type": "integer", "minimum": 0},
+        "msg": {"type": "string", "minLength": 1},
         "counter": {"type": "integer", "minimum": 0},
-        "payload": {"type": "string", "minLength": 1},
         "hmac": {"type": "string", "minLength": 1},
     },
-    "required": ["sender", "counter", "payload", "hmac"],
+    "required": ["id", "msg", "counter", "hmac"],
     "additionalProperties": False,
 }
-
 
 # ---------------------------------------------------------
 # Validator function

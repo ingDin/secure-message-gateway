@@ -1,18 +1,6 @@
 """
 Unit tests for secure_gateway.logger.
 
-Coverage:
-- JSON-lines logging:
-    * file creation
-    * correct JSON structure
-    * valid ISO8601 UTC timestamp
-    * correct event and payload fields
-
-- Multiple event logging:
-    * appends entries line-by-line
-    * preserves order
-    * produces valid JSON for each line
-
 These tests ensure deterministic, structured, and ingestion-friendly
 audit logging compatible with ELK / Splunk / Datadog.
 """
@@ -25,13 +13,17 @@ import json
 # ---------------------------------------------------------
 
 class TestSingleEvent:
+    """Tests for logging a single audit event."""
+
     def test_log_event_creates_file(self, logger_env):
+        """Logging one event should create a file with one JSON line."""
         logger_env.logger.log_event("TEST_EVENT", {"x": 1})
 
         lines = logger_env.read_lines()
         assert len(lines) == 1
 
     def test_log_event_json_structure(self, logger_env):
+        """Logged event should contain correct fields and ISO8601 timestamp."""
         logger_env.logger.log_event("HMAC_OK", {"id": 123})
 
         data = logger_env.read_json_lines()[0]
@@ -47,7 +39,10 @@ class TestSingleEvent:
 # ---------------------------------------------------------
 
 class TestMultipleEvents:
+    """Tests for logging multiple audit events."""
+
     def test_multiple_events(self, logger_env):
+        """Multiple events should append line-by-line and preserve order."""
         logger_env.logger.log_event("A", {"n": 1})
         logger_env.logger.log_event("B", {"n": 2})
 
