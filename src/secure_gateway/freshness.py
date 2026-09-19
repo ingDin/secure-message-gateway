@@ -5,6 +5,9 @@ import json
 from typing import Any, Dict
 
 
+# ---------------------------------------------------------
+# Exception hierarchy for freshness / replay protection
+# ---------------------------------------------------------
 class FreshnessError(Exception):
     """Base exception for freshness-related errors."""
 
@@ -17,6 +20,10 @@ class CounterReplayError(FreshnessError):
     """Raised when a replay or stale counter is detected."""
 
 
+# ---------------------------------------------------------
+# Internal loader: read monotonic counter from freshness.json
+# Ensures file exists, JSON is valid, and counter is an integer
+# ---------------------------------------------------------
 def _load_counter(counter_path: Path) -> int:
     """
     Load monotonic counter from JSON file.
@@ -42,6 +49,10 @@ def _load_counter(counter_path: Path) -> int:
     return value
 
 
+# ---------------------------------------------------------
+# Internal store: write updated monotonic counter to disk
+# Used only after successful freshness verification
+# ---------------------------------------------------------
 def _store_counter(counter_path: Path, value: int) -> None:
     """
     Store updated monotonic counter.
@@ -55,6 +66,10 @@ def _store_counter(counter_path: Path, value: int) -> None:
     )
 
 
+# ---------------------------------------------------------
+# Freshness check: ensures incoming counter is strictly increasing
+# Prevents replay attacks and stale message injection
+# ---------------------------------------------------------
 def verify_freshness(counter: int, last_counter: int) -> None:
     """
     Verify monotonic counter freshness.
@@ -69,6 +84,14 @@ def verify_freshness(counter: int, last_counter: int) -> None:
         )
 
 
+# ---------------------------------------------------------
+# Full freshness pipeline:
+# - load last counter
+# - verify monotonicity
+# - store updated counter
+#
+# This function is the public API used by the gateway.
+# ---------------------------------------------------------
 def update_freshness(counter_path: Path, incoming_counter: int) -> None:
     """
     Full freshness pipeline:

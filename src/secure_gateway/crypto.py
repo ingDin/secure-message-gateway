@@ -7,6 +7,9 @@ from pathlib import Path
 from typing import Any, Dict
 
 
+# ---------------------------------------------------------
+# Exception hierarchy for crypto operations
+# ---------------------------------------------------------
 class CryptoError(Exception):
     """Base exception for crypto-related errors."""
 
@@ -19,6 +22,10 @@ class HMACVerificationError(CryptoError):
     """Raised when HMAC verification fails."""
 
 
+# ---------------------------------------------------------
+# Internal key loader
+# Loads and validates the HMAC key from config/keys.json
+# ---------------------------------------------------------
 def _load_keys(config_path: Path) -> Dict[str, Any]:
     """
     Load keys from a JSON file.
@@ -39,6 +46,10 @@ def _load_keys(config_path: Path) -> Dict[str, Any]:
     return data
 
 
+# ---------------------------------------------------------
+# Public API: return HMAC key as bytes
+# Ensures hex decoding and validates key integrity
+# ---------------------------------------------------------
 def get_hmac_key(config_dir: Path = Path("config")) -> bytes:
     keys_path = config_dir / "keys.json"
     keys = _load_keys(keys_path)
@@ -54,6 +65,10 @@ def get_hmac_key(config_dir: Path = Path("config")) -> bytes:
     return key
 
 
+# ---------------------------------------------------------
+# Compute HMAC-SHA256 for a JSON payload
+# Payload must NOT contain the hmac field
+# ---------------------------------------------------------
 def sign_message(payload: Dict[str, Any], key: bytes) -> str:
     """
     Compute HMAC-SHA256 over a JSON-serialized payload.
@@ -62,11 +77,16 @@ def sign_message(payload: Dict[str, Any], key: bytes) -> str:
     :param key: HMAC key as bytes
     :return: hex-encoded HMAC
     """
+    # Stable JSON encoding ensures deterministic HMAC
     message = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     mac = hmac.new(key, message, sha256).hexdigest()
     return mac
 
 
+# ---------------------------------------------------------
+# Verify HMAC-SHA256 for a given payload
+# Uses compare_digest to prevent timing attacks
+# ---------------------------------------------------------
 def verify_message(payload: Dict[str, Any], key: bytes, expected_hmac: str) -> None:
     """
     Verify HMAC-SHA256 for a given payload.
@@ -77,5 +97,7 @@ def verify_message(payload: Dict[str, Any], key: bytes, expected_hmac: str) -> N
     :raises HMACVerificationError: if HMAC does not match
     """
     computed = sign_message(payload, key)
+
+    # Constant-time comparison to avoid timing side-channel leaks
     if not hmac.compare_digest(computed, expected_hmac):
         raise HMACVerificationError("HMAC verification failed")
