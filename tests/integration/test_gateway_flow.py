@@ -15,67 +15,8 @@ Coverage:
 
 - Schema validation:
     * missing required fields rejected with SCHEMA_FAIL
-
-These tests ensure that the gateway enforces message integrity,
-freshness monotonicity, and strict schema validation before
-processing incoming messages.
 """
 
-import json
-from pathlib import Path
-import pytest
-
-from secure_gateway.gateway import Gateway
-from secure_gateway.crypto import sign_message, get_hmac_key
-
-
-# ---------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------
-
-@pytest.fixture
-def config_dir(tmp_path):
-    """Temporary config directory with valid HMAC key and freshness counter."""
-    (tmp_path / "keys.json").write_text(json.dumps({
-        "hmac_key": "a" * 64
-    }))
-    (tmp_path / "freshness.json").write_text(json.dumps({
-        "counter": 0
-    }))
-    return tmp_path
-
-
-@pytest.fixture
-def gateway(config_dir, tmp_path):
-    """Gateway instance used in all tests."""
-    return Gateway(config_dir=config_dir, log_path=tmp_path / "audit.log")
-
-
-@pytest.fixture
-def build_message():
-    """Factory for IncomingMessage dicts."""
-    def _build(id=1, msg="hello", counter=1, hmac=""):
-        return {"id": id, "msg": msg, "counter": counter, "hmac": hmac}
-    return _build
-
-
-@pytest.fixture
-def compute_hmac(config_dir):
-    """Factory for computing valid HMAC for a message."""
-    def _compute(message):
-        key = get_hmac_key(config_dir)
-        payload = {
-            "id": message["id"],
-            "msg": message["msg"],
-            "counter": message["counter"],
-        }
-        return sign_message(payload, key)
-    return _compute
-
-
-# ---------------------------------------------------------
-# Test Class
-# ---------------------------------------------------------
 
 class TestGatewayFlow:
     """Integration tests for the secure message gateway."""
