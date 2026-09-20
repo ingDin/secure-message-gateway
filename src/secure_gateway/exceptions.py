@@ -1,9 +1,10 @@
-# src/secure_gateway/exceptions.py
+"""
+Custom exception hierarchy for the secure gateway.
 
-# ---------------------------------------------------------
-# Gateway exception hierarchy
-# Centralized error types used across schema, crypto, and freshness.
-# ---------------------------------------------------------
+Defines structured error types used across schema validation,
+HMAC verification, freshness checks, and gateway orchestration.
+"""
+
 class GatewayError(Exception):
     """Base exception for all gateway-related errors."""
 

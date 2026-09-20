@@ -1,25 +1,30 @@
-# src/secure_gateway/freshness.py
+"""
+Asynchronous monotonic counter management for replay protection.
+
+Provides non‑blocking load/store operations for freshness.json and
+sync logic for verifying strictly increasing counters in the gateway.
+"""
 
 from pathlib import Path
 import json
+import asyncio
+import aiofiles
 from typing import Any, Dict
+
 from secure_gateway.exceptions import FreshnessError
 
-# ---------------------------------------------------------
-# Internal loader: read monotonic counter from freshness.json
-# Ensures file exists, JSON is valid, and counter is an integer
-# ---------------------------------------------------------
-def _load_counter(counter_path: Path) -> int:
-    """
-    Load monotonic counter from JSON file.
 
-    :param counter_path: Path to freshness.json
-    :return: integer counter
-    :raises CounterLoadError: if file missing or invalid
+# ---------------------------------------------------------
+# Async loader: read monotonic counter from freshness.json
+# ---------------------------------------------------------
+async def _load_counter_async(counter_path: Path) -> int:
+    """
+    Asynchronously load monotonic counter from JSON file.
     """
     try:
-        with counter_path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
+        async with aiofiles.open(counter_path, "r", encoding="utf-8") as f:
+            raw = await f.read()
+            data = json.loads(raw)
     except (OSError, json.JSONDecodeError) as exc:
         raise FreshnessError(f"Failed to load counter from {counter_path}") from exc
 
@@ -35,33 +40,22 @@ def _load_counter(counter_path: Path) -> int:
 
 
 # ---------------------------------------------------------
-# Internal store: write updated monotonic counter to disk
-# Used only after successful freshness verification
+# Async store: write updated monotonic counter to disk
 # ---------------------------------------------------------
-def _store_counter(counter_path: Path, value: int) -> None:
+async def _store_counter_async(counter_path: Path, value: int) -> None:
     """
-    Store updated monotonic counter.
-
-    :param counter_path: Path to freshness.json
-    :param value: new counter value
+    Asynchronously store updated monotonic counter.
     """
-    counter_path.write_text(
-        json.dumps({"counter": value}),
-        encoding="utf-8",
-    )
+    async with aiofiles.open(counter_path, "w", encoding="utf-8") as f:
+        await f.write(json.dumps({"counter": value}))
 
 
 # ---------------------------------------------------------
-# Freshness check: ensures incoming counter is strictly increasing
-# Prevents replay attacks and stale message injection
+# Freshness check (sync logic)
 # ---------------------------------------------------------
 def verify_freshness(counter: int, last_counter: int) -> None:
     """
     Verify monotonic counter freshness.
-
-    :param counter: incoming message counter
-    :param last_counter: stored monotonic counter
-    :raises CounterReplayError: if counter <= last_counter
     """
     if counter <= last_counter:
         raise FreshnessError(
@@ -70,23 +64,15 @@ def verify_freshness(counter: int, last_counter: int) -> None:
 
 
 # ---------------------------------------------------------
-# Full freshness pipeline:
-# - load last counter
-# - verify monotonicity
-# - store updated counter
-#
-# This function is the public API used by the gateway.
+# Full async freshness pipeline
 # ---------------------------------------------------------
-def update_freshness(counter_path: Path, incoming_counter: int) -> None:
+async def update_freshness_async(counter_path: Path, incoming_counter: int) -> None:
     """
-    Full freshness pipeline:
-    - load last counter
-    - verify monotonicity
-    - store updated counter
-
-    :param counter_path: Path to freshness.json
-    :param incoming_counter: counter from message
+    Full async freshness pipeline:
+    - load last counter (async)
+    - verify monotonicity (sync)
+    - store updated counter (async)
     """
-    last = _load_counter(counter_path)
+    last = await _load_counter_async(counter_path)
     verify_freshness(incoming_counter, last)
-    _store_counter(counter_path, incoming_counter)
+    await _store_counter_async(counter_path, incoming_counter)

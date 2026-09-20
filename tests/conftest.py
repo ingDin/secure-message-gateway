@@ -2,9 +2,10 @@ import json
 import secrets
 import pytest
 from pathlib import Path
-from secure_gateway.logger import AuditLogger
-from secure_gateway.gateway import Gateway
-from secure_gateway.crypto import sign_message, get_hmac_key
+from secure_gateway.logger import AuditLoggerAsync
+from secure_gateway.gateway import GatewayAsync
+from secure_gateway.crypto import sign_message_async, get_hmac_key_async
+import pytest_asyncio
 
 DEFAULT_HMAC_KEY_SIZE = 32
 
@@ -199,56 +200,37 @@ def write_freshness_fixture(tmp_path):
 # Fixture: enterprise logger environment
 # ---------------------------------------------------------
 
-@pytest.fixture
-def logger_env(tmp_path):
+@pytest_asyncio.fixture
+async def logger_env(tmp_path):
     """
-    Provide an isolated logging environment for tests that verify
+    Provide an isolated async logging environment for tests that verify
     the gateway's audit logging behavior.
 
     This fixture creates:
       - audit.log: a temporary log file unique to each test
-      - AuditLogger instance: writes structured log entries to audit.log
-
-    The returned LoggerEnv object offers convenient helpers for reading
-    the log file in both raw and JSON-decoded form, making it ideal for
-    tests that assert log structure, ordering, or content.
+      - AuditLoggerAsync instance: writes structured log entries asynchronously
 
     Returns:
-        LoggerEnv: A lightweight wrapper exposing:
+        LoggerEnvAsync: A wrapper exposing:
             - log_path: Path to audit.log
-            - logger:   AuditLogger instance bound to log_path
-            - read_lines():       Read log file as raw text lines
-            - read_json_lines():  Read log file as parsed JSON objects
+            - logger:   AuditLoggerAsync instance
+            - read_lines():       Read raw log lines (sync)
+            - read_json_lines():  Read parsed JSON entries (sync)
     """
-    class LoggerEnv:
+    class LoggerEnvAsync:
         def __init__(self, base: Path):
             self.log_path = base / "audit.log"
-            self.logger = AuditLogger(self.log_path)
+            self.logger = AuditLoggerAsync(self.log_path)
 
         def read_lines(self):
-            """
-            Read all lines from audit.log as plain text.
-
-            Returns:
-                list[str]: Each log entry as a raw text line.
-                           Returns an empty list if the file does not exist.
-            """
             if not self.log_path.exists():
                 return []
             return self.log_path.read_text(encoding="utf-8").splitlines()
 
         def read_json_lines(self):
-            """
-            Read all log entries as JSON-decoded objects.
-
-            Each line in audit.log is expected to contain a valid JSON object.
-
-            Returns:
-                list[dict]: Parsed JSON entries from the audit log.
-            """
             return [json.loads(line) for line in self.read_lines()]
 
-    return LoggerEnv(tmp_path)
+    return LoggerEnvAsync(tmp_path)
 
 
 # ---------------------------------------------------------
@@ -298,7 +280,7 @@ def gateway(config_dir, tmp_path):
     Returns:
         Gateway: A fresh gateway instance ready to process messages.
     """
-    return Gateway(config_dir=config_dir, log_path=tmp_path / "audit.log")
+    return GatewayAsync(config_dir=config_dir, log_path=tmp_path / "audit.log")
 
 
 # ---------------------------------------------------------
@@ -330,30 +312,27 @@ def build_message():
 # Fixture: compute_hmac
 # ---------------------------------------------------------
 
-@pytest.fixture
-def compute_hmac(config_dir):
+@pytest_asyncio.fixture
+async def compute_hmac(config_dir):
     """
-    Factory for computing a valid HMAC for a message using the gateway's
-    configured HMAC key.
+    Async test fixture that returns a callable for computing valid HMACs.
 
-    The HMAC is computed over a canonical payload containing:
-      - id
-      - msg
-      - counter
+    Loads the gateway's HMAC key asynchronously from config/keys.json,
+    then provides an async function `_compute(message)` which:
+      - extracts the payload fields (id, msg, counter)
+      - computes a deterministic HMAC-SHA256 digest using sign_message_async
+      - returns the hex-encoded MAC string
 
-    This ensures consistent signing behavior across all tests and mirrors
-    the gateway's internal signing logic.
-
-    Returns:
-        Callable[[dict], str]: A function that computes the HMAC hex digest
-        for a given message dictionary.
+    Used in integration tests to generate correct HMAC values for messages.
     """
-    def _compute(message):
-        key = get_hmac_key(config_dir)
+    key = await get_hmac_key_async(config_dir)
+
+    async def _compute(message):
         payload = {
             "id": message["id"],
             "msg": message["msg"],
             "counter": message["counter"],
         }
-        return sign_message(payload, key)
+        return await sign_message_async(payload, key)
+
     return _compute

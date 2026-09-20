@@ -1,8 +1,8 @@
 """
-JSON Schema validator for gateway incoming messages.
+JSON Schema validator for secure‑gateway messages.
 
-This module ensures that every incoming message respects the
-mandatory structure before entering the crypto and freshness pipeline.
+Provides strict structural validation for incoming JSON payloads
+before they enter the crypto, freshness, and audit pipeline.
 """
 
 import jsonschema

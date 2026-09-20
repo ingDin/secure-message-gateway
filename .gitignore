@@ -65,3 +65,7 @@ Thumbs.db
 *.tmp
 *.bak
 *.old
+
+# Behave temporary files
+tests/async/bdd/tmp_behave/
+

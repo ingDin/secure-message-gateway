@@ -1,78 +1,23 @@
 """
-Unit tests for secure_gateway.crypto.
+Unit tests for secure_gateway.crypto (synchronous HMAC logic).
 
-Coverage:
-- HMAC key loading
-- HMAC signing
-- HMAC verification
-
-These tests guarantee deterministic, secure, and predictable behavior
-for the crypto module, ensuring message integrity and replay protection.
+These tests validate the deterministic and security‑critical behavior of the
+HMAC signing and verification routines. The suite ensures that message
+digests are stable, independent of key order, sensitive to payload and key
+changes, and compliant with RFC 2104 known‑answer vectors. It also verifies
+that tampered payloads or modified MACs are correctly rejected, guaranteeing
+message integrity and robust replay protection within the gateway.
 """
+
 
 import pytest
 import json
 
 from secure_gateway.exceptions import HMACError
 from secure_gateway.crypto import (
-    get_hmac_key,
     sign_message,
     verify_message,
 )
-
-
-# ---------------------------------------------------------
-# Tests for get_hmac_key
-# ---------------------------------------------------------
-
-class TestLoadHmacKey:
-    """Tests for loading and validating HMAC keys."""
-
-    @pytest.mark.parametrize("hmac_test_env", [16, 64], indirect=True)
-    def test_load_key(self, hmac_test_env):
-        """Valid HMAC keys should load correctly."""
-        config_dir = hmac_test_env["config_dir"]
-        expected_key = hmac_test_env["key"]
-
-        key = get_hmac_key(config_dir)
-
-        assert isinstance(key, bytes)
-        assert key == expected_key
-
-    def test_load_key_file_missing(self, tmp_path):
-        """Missing keys.json should raise HMACError."""
-        with pytest.raises(HMACError):
-            get_hmac_key(tmp_path)
-
-    def test_load_key_invalid_json(self, write_keys_fixture):
-        """Invalid JSON should raise HMACError."""
-        config_dir = write_keys_fixture("{invalid json")
-
-        with pytest.raises(HMACError):
-            get_hmac_key(config_dir)
-
-    def test_load_key_missing_hmac_key(self, write_keys_fixture):
-        """Missing 'hmac_key' field should raise HMACError."""
-        config_dir = write_keys_fixture('{"other_key": "abc"}')
-
-        with pytest.raises(HMACError):
-            get_hmac_key(config_dir)
-
-    @pytest.mark.parametrize(
-        "content",
-        [
-            '{"hmac_key": "not-hex"}',
-            '{"hmac_key": ""}',
-            '{"hmac_key": null}',
-            '{"hmac_key": 123}',
-        ],
-    )
-    def test_load_key_invalid_hmac_key(self, write_keys_fixture, content):
-        """Invalid hmac_key values should raise HMACError."""
-        config_dir = write_keys_fixture(content)
-
-        with pytest.raises(HMACError):
-            get_hmac_key(config_dir)
 
 
 # ---------------------------------------------------------
