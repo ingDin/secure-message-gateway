@@ -1,149 +1,95 @@
-# secure-message-gateway
-Security-focused Python gateway designed for safety‑critical environments (railway, automotive).  
-Implements message integrity, freshness protection, secure logging and full pytest coverage.  
-Built using a combined **Top‑Down Architecture** and **Bottom‑Up Implementation** approach.
+# 🚀 secure-message-gateway
+
+⚡ Ultra‑Secure, Ultra‑Fast Message Validation & Protection  
+HMAC • Freshness • Deterministic Pipeline • Full Test Suite
+
+![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)
+![Asyncio](https://img.shields.io/badge/Asyncio-Ready-green.svg)
+![Security](https://img.shields.io/badge/Security-HMAC%20%2B%20Freshness-critical.svg)
+![Coverage](https://img.shields.io/badge/pytest-Full%20Coverage-brightgreen.svg)
+![Architecture](https://img.shields.io/badge/Architecture-Clean%20Design-blue.svg)
 
 ---
 
-## 🏗️ Architectural Approach
+## 🌟 What This Gateway Delivers
 
-### Top‑Down (System-Level Design)
-- Define the system responsibilities: validate → verify → protect → log.
-- Establish the main components:
-  - Gateway Core (message pipeline)
-  - Security Layer (HMAC + freshness)
-  - Audit Layer (secure logging)
-  - Configuration Layer (JSON key store)
-- Define data flow:
-  - Input JSON → Validation → Crypto → Freshness → Logging → Response
-- Ensure extensibility for:
-  - REST API
-  - Selenium monitoring dashboard
-  - CI/CD integration
+Modern embedded systems need **trustworthy messages**.  
+This gateway ensures every PDU is **authentic, fresh, validated, logged** — with zero guesswork.
 
-### Bottom‑Up (Component-Level Construction)
-1. **crypto.py** – HMAC-SHA256 signing & verification.
-2. **freshness.py** – monotonic counter validation (anti-replay).
-3. **logger.py** – rotating audit logs.
-4. **gateway.py** – orchestrates validation, crypto, freshness, logging.
-5. **config.json** – key store & security parameters.
-6. **tests/** – unit, integration, BDD scenarios, mocks, JSON test vectors.
+Built for developers who want:
+
+- 🔐 **Strong cryptographic integrity (HMAC‑SHA256)**
+- 🕒 **Replay‑proof freshness counters**
+- 📜 **Deterministic validation pipeline**
+- 🧪 **Full test coverage (unit + integration + BDD)**
+- ⚙️ **Clean architecture ready for extension**
+
+It’s fast, predictable, secure — and engineered for real‑world production environments.
 
 ---
 
-## 🔐 Security Features
-- Message integrity via HMAC-SHA256.
-- Replay protection using freshness counters.
-- Secure audit logging with rotation.
-- Configurable security parameters (JSON).
-- Deterministic behavior suitable for safety-critical systems.
+## 🔧 Architecture Snapshot
+
+<br>
+<p align="center">
+  <img src="docs/secure_gateway_image.png" width="300">
+</p>
+<br>
+
+---
+
+## 🏗️ Core Components
+
+- `gateway.py` — orchestrates validation → crypto → freshness → logging  
+- `crypto.py` — HMAC‑SHA256 signing & verification  
+- `freshness.py` — monotonic counters (anti‑replay)  
+- `logger.py` — secure rotating audit logs  
+- `models.py` — strict DTO validation  
+- `exceptions.py` — deterministic error taxonomy  
 
 ---
 
 ## 🧪 Testing Strategy
 
-### Unit Tests (Bottom‑Up)
-- crypto: HMAC correctness
-- freshness: counter monotonicity
-- logger: audit events
-- gateway: validation pipeline
-
-### Integration Tests (Top‑Down)
-- full message flow from input → validation → crypto → freshness → logging
-- invalid HMAC, malformed messages, replay attempts
-
-### BDD (Given–When–Then)
-- **Given** a valid message  
-- **When** the gateway processes it  
-- **Then** it is accepted and logged  
-
-### Mocking & Test Vectors
-- mock crypto failures
-- JSON-based deterministic test vectors
+- Unit tests for crypto, freshness, logger, gateway  
+- Integration tests for full message flow  
+- BDD scenarios (Given‑When‑Then)  
+- Deterministic JSON test vectors  
 
 ---
 
-## 📁 Project Structure
+## 📦 Project Structure
 
-    secure-message-gateway/
-    │
-    ├── src/
-    │   └── secure_gateway/          # Python package (import secure_gateway)
-    │       ├── __init__.py
-    │       ├── gateway.py           # System orchestrator (top‑down)
-    │       ├── crypto.py            # HMAC-SHA256 integrity module (bottom‑up)
-    │       ├── freshness.py         # Anti-replay monotonic counter (bottom‑up)
-    │       ├── logger.py            # Secure audit logging (bottom‑up)
-    │       ├── exceptions.py        # Custom exception types
-    │       └── models.py            # Data models / DTOs
-    │
-    ├── config/
-    │   ├── config.json              # Security parameters
-    │   └── keys.json                # HMAC / future AES-GCM keys
-    │
-    ├── tests/
-    │   ├── unit/                    # Bottom‑up unit tests
-    │   │   ├── test_crypto.py
-    │   │   ├── test_freshness.py
-    │   │   ├── test_logger.py
-    │   │   └── __init__.py
-    │   │
-    │   ├── integration/             # Top‑down integration tests
-    │   │   ├── test_gateway_flow.py
-    │   │   └── __init__.py
-    │   │
-    │   ├── bdd/                     # Given / When / Then scenarios
-    │   │   ├── test_message_acceptance.py
-    │   │   └── __init__.py
-    │   │
-    │   ├── conftest.py              # Global fixtures & mocks
-    │   └── __init__.py
-    │
-    ├── examples/
-    │   ├── valid_message.json       # Test vectors
-    │   ├── invalid_hmac.json
-    │   └── replay_attack.json
-    │
-    ├── scripts/
-    │   ├── generate_hmac.py         # Key generation utilities
-    │   ├── simulate_gateway.py      # Message simulation tool
-    │   └── export_logs.py           # Audit log exporter
-    │
-    ├── logs/
-    │   └── gateway.log              # Rotating audit logs
-    │
-    ├── docs/
-    │   ├── architecture.md          # Top‑down architecture documentation
-    │   ├── components.md            # Bottom‑up component documentation
-    │   ├── security_model.md        # HMAC, freshness, threat model
-    │   └── testing_strategy.md      # Unit, integration, BDD testing
-    │
-    ├── ci/
-    │   └── github-actions.yml       # CI/CD pipeline (pytest + lint)
-    │
-    ├── .gitignore
-    ├── README.md
-    ├── requirements.txt
-    └── LICENSE
+```bash
+secure-message-gateway/
+├── src/secure_gateway/
+├── config/
+├── tests/
+├── examples/
+├── scripts/
+├── docs/
+└── ci/
+```
+
 
 ---
 
 ## ▶️ Getting Started
-    git clone https://github.com/ingDin/secure-message-gateway
-    cd secure-message-gateway
-    pip install -r requirements.txt
-    pytest -v
-
+```bash
+git clone https://github.com/ingDin/secure-message-gateway
+cd secure-message-gateway
+pip install -r requirements.txt
+pytest -v
+```
 ---
-
 ## 📌 Roadmap
-- REST API interface  
-- Selenium monitoring dashboard  
-- AES-GCM encryption layer  
-- CI/CD pipeline  
-- Performance & stress tests  
 
----
+- REST API interface
+- Selenium monitoring dashboard 
+- AES-GCM encryption layer 
+- CI/CD pipeline 
+- Performance & stress tests
+
 
 ## 📄 License
 MIT
