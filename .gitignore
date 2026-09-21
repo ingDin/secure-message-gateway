@@ -21,6 +21,18 @@ logs/
 *.log
 
 # ============================
+# CSV / reports (runtime)
+# ============================
+*.csv
+reports/
+exports/
+
+# ============================
+# Examples (runtime generated)
+# ============================
+examples/examples.json
+
+# ============================
 # Config & keys (sensitive)
 # ============================
 config/keys.json
@@ -66,6 +78,7 @@ Thumbs.db
 *.bak
 *.old
 
+# ============================
 # Behave temporary files
+# ============================
 tests/async/bdd/tmp_behave/
-
