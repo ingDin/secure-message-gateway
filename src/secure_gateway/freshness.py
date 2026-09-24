@@ -1,78 +1,81 @@
 """
 Asynchronous monotonic counter management for replay protection.
 
-Provides non‑blocking load/store operations for freshness.json and
-sync logic for verifying strictly increasing counters in the gateway.
+Implements ALL freshness rules from config.json:
+- monotonic counter
+- min_increment
+- max_increment
+- max_drift
+- reject_out_of_range
 """
 
-from pathlib import Path
 import json
-import asyncio
+from pathlib import Path
 import aiofiles
-from typing import Any, Dict
 
 from secure_gateway.exceptions import FreshnessError
 
 
-# ---------------------------------------------------------
-# Async loader: read monotonic counter from freshness.json
-# ---------------------------------------------------------
-async def _load_counter_async(counter_path: Path) -> int:
+class FreshnessManager:
     """
-    Asynchronously load monotonic counter from JSON file.
+    Manages a monotonic counter stored in freshness.json.
+
+    Responsibilities:
+    - async load of the counter
+    - async store of updated counter
+    - full freshness validation based on config.json
     """
-    try:
-        async with aiofiles.open(counter_path, "r", encoding="utf-8") as f:
-            raw = await f.read()
-            data = json.loads(raw)
-    except (OSError, json.JSONDecodeError) as exc:
-        raise FreshnessError(f"Failed to load counter from {counter_path}") from exc
 
-    if "counter" not in data:
-        raise FreshnessError("Missing 'counter' field in freshness.json")
+    def __init__(self, counter_path: Path, config: dict) -> None:
+        self.counter_path = counter_path
+        self.cfg = config["freshness"]
 
-    try:
-        value = int(data["counter"])
-    except (TypeError, ValueError) as exc:
-        raise FreshnessError("Invalid 'counter' value in freshness.json") from exc
+    async def load_async(self) -> int:
+        try:
+            async with aiofiles.open(self.counter_path, "r", encoding="utf-8") as f:
+                raw = await f.read()
+                data = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as exc:
+            raise FreshnessError(f"Failed to load counter from {self.counter_path}") from exc
 
-    return value
+        if "counter" not in data:
+            raise FreshnessError("Missing 'counter' field in freshness.json")
 
+        try:
+            return int(data["counter"])
+        except (TypeError, ValueError) as exc:
+            raise FreshnessError("Invalid 'counter' value in freshness.json") from exc
 
-# ---------------------------------------------------------
-# Async store: write updated monotonic counter to disk
-# ---------------------------------------------------------
-async def _store_counter_async(counter_path: Path, value: int) -> None:
-    """
-    Asynchronously store updated monotonic counter.
-    """
-    async with aiofiles.open(counter_path, "w", encoding="utf-8") as f:
-        await f.write(json.dumps({"counter": value}))
+    async def store_async(self, value: int) -> None:
+        async with aiofiles.open(self.counter_path, "w", encoding="utf-8") as f:
+            await f.write(json.dumps({"counter": value}))
 
+    async def validate_and_update_async(self, incoming: int) -> None:
+        last = await self.load_async()
+        increment = incoming - last
 
-# ---------------------------------------------------------
-# Freshness check (sync logic)
-# ---------------------------------------------------------
-def verify_freshness(counter: int, last_counter: int) -> None:
-    """
-    Verify monotonic counter freshness.
-    """
-    if counter <= last_counter:
-        raise FreshnessError(
-            f"Replay detected: incoming={counter}, last={last_counter}"
-        )
+        if incoming < last:
+            raise FreshnessError(
+                f"Replay detected: incoming={incoming}, last={last}"
+            )
 
+        if increment < self.cfg["min_increment"]:
+            raise FreshnessError(
+                f"Counter increment too small: increment={increment}, "
+                f"min_increment={self.cfg['min_increment']}"
+            )
 
-# ---------------------------------------------------------
-# Full async freshness pipeline
-# ---------------------------------------------------------
-async def update_freshness_async(counter_path: Path, incoming_counter: int) -> None:
-    """
-    Full async freshness pipeline:
-    - load last counter (async)
-    - verify monotonicity (sync)
-    - store updated counter (async)
-    """
-    last = await _load_counter_async(counter_path)
-    verify_freshness(incoming_counter, last)
-    await _store_counter_async(counter_path, incoming_counter)
+        if increment > self.cfg["max_increment"]:
+            if self.cfg["reject_out_of_range"]:
+                raise FreshnessError(
+                    f"Counter increment too large: increment={increment}, "
+                    f"max_increment={self.cfg['max_increment']}"
+                )
+
+        if increment > self.cfg["max_drift"]:
+            raise FreshnessError(
+                f"Counter drift too large: increment={increment}, "
+                f"max_drift={self.cfg['max_drift']}"
+            )
+
+        await self.store_async(incoming)

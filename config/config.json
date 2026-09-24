@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+
+  "environment": "dev",
+
+  "crypto": {
+    "algorithm": "HMAC",
+
+    "keys_file": "config/keys.json",
+    "keys_archive": "config/keys_archive.json",
+
+    "hmac_algorithm": "SHA256",
+    "allowed_algorithms": ["SHA256"],
+
+    "min_key_length": 32,
+
+    "rotation_required": true,
+    "rotation_interval_days": 30
+  },
+
+  "freshness": {
+    "counter_file": "config/freshness.json",
+
+    "min_increment": 1,
+    "max_increment": 5,
+    "max_drift": 10,
+
+    "reject_out_of_range": true
+  },
+
+  "logging": {
+    "path": "logs/gateway.log"
+  },
+
+  "audit": {
+    "enabled": true,
+    "path": "logs/audit.log"
+  }
+}

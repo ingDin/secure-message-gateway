@@ -81,4 +81,4 @@ Thumbs.db
 # ============================
 # Behave temporary files
 # ============================
-tests/async/bdd/tmp_behave/
+tmp_behave

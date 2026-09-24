@@ -11,85 +11,124 @@ HMAC • Freshness • Deterministic Pipeline • Full Test Suite
 
 ---
 
-## 🌟 What This Gateway Delivers
-
-Modern embedded systems need **trustworthy messages**.  
-This gateway ensures every PDU is **authentic, fresh, validated, logged** — with zero guesswork.
-
-Built for developers who want:
-
-- 🔐 **Strong cryptographic integrity (HMAC‑SHA256)**
-- 🕒 **Replay‑proof freshness counters**
-- 📜 **Deterministic validation pipeline**
-- 🧪 **Full test coverage (unit + integration + BDD)**
-- ⚙️ **Clean architecture ready for extension**
-
-It’s fast, predictable, secure — and engineered for real‑world production environments.
-
----
-
 ## 🔧 Architecture Snapshot
 
 <br>
 <p align="center">
-  <img src="docs/secure_gateway_image.png" width="300">
+  <img src="assets/secure_gateway_image.png" width="300">
 </p>
 <br>
 
 ---
 
-## 🏗️ Core Components
+## 🔥 Why This Exists
 
-- `gateway.py` — orchestrates validation → crypto → freshness → logging  
-- `crypto.py` — HMAC‑SHA256 signing & verification  
-- `freshness.py` — monotonic counters (anti‑replay)  
-- `logger.py` — secure rotating audit logs  
-- `models.py` — strict DTO validation  
-- `exceptions.py` — deterministic error taxonomy  
+Most embedded systems still exchange raw PDUs with **zero cryptographic guarantees**, **zero freshness protection**, and **zero auditability**.  
+That’s a huge attack surface — replay attacks, tampered messages, silent failures.
+
+`secure-message-gateway` fixes this with a **deterministic, cryptographically‑verified, fully‑audited message pipeline** designed for real‑world, safety‑critical environments.
+
+It exists because developers need:
+
+- 🔐 **HMAC‑SHA256 integrity**  
+- 🛡️ **Replay‑proof freshness counters**  
+- 📏 **Strict schema validation**  
+- ⚠️ **Predictable error taxonomy**  
+- 📝 **Structured audit logging**  
+- 🧪 **Full test coverage (unit + integration + BDD)**  
+
+Built for **embedded**, **industrial**, **IoT**, **robotics**, and **secure messaging** systems that demand trust.
 
 ---
 
-## 🧪 Testing Strategy
+## ⚡ Key Features
 
-- Unit tests for crypto, freshness, logger, gateway  
-- Integration tests for full message flow  
-- BDD scenarios (Given‑When‑Then)  
-- Deterministic JSON test vectors  
+- 🔐 **HMAC‑SHA256 signing & verification**  
+- 🕒 **Monotonic freshness counters (anti‑replay)**  
+- 📜 **Deterministic validation pipeline**  
+- 🔄 **Config‑driven key rotation**  
+- 📝 **Structured audit logging (JSON lines)**  
+- ⚡ **Async gateway for high‑throughput systems**  
+- 📦 **Strict schema validation (DTO models)**  
+- 🧪 **Full test suite: unit, integration, BDD**  
+- 📁 **Reproducible JSON test vectors**  
+- 🧱 **Clean, extensible architecture**  
+
+Designed to be **fast**, **predictable**, and **production‑ready**. 
 
 ---
 
-## 📦 Project Structure
+## 🚀 Use Cases
 
-```bash
-secure-message-gateway/
-├── src/secure_gateway/
-├── config/
-├── tests/
-├── examples/
-├── scripts/
-├── docs/
-└── ci/
+Perfect for systems that require **trustworthy, verifiable communication**:
+
+- 🔌 **Embedded systems** needing message integrity  
+- 🏭 **Industrial controllers** exchanging PDUs  
+- 📡 **IoT devices** requiring secure communication  
+- 🤖 **Robotics pipelines** with deterministic messaging  
+- 🛫 **Safety‑critical systems** (automotive, aerospace, medical)  
+- 🐍 **Python microservices** validating external input  
+- 📜 **Secure audit logging**  
+- 🔐 **HMAC‑based authentication layers**  
+
+If your system can’t afford replay attacks or tampered messages, this gateway fits.
+
+---
+
+## 🧠 Technical Highlights
+
+- ⚡ **Async Python gateway (`asyncio`)**  
+- 🔐 **Cryptographic backend (`HMACAlgorithm`)**  
+- 🔄 **Key rotation (`KeyFileStore`)**  
+- 🕒 **Freshness persistence (`FreshnessStore`)**  
+- 📝 **Structured audit logging (`AuditLogger`)**  
+- 📦 **Schema validation (`models.py`)**  
+- ⚠️ **Deterministic error handling (`exceptions.py`)**  
+- 📁 **Reproducible test vectors (`examples.json`)**  
+
+Every component is built for clarity, determinism, and extensibility.
+
+---
+
+## ▶️ Quick Example
+
+```python
+from secure_gateway.gateway import GatewayAsync
+
+gateway = GatewayAsync("config/config.json")
+
+msg = {
+    "id": 1,
+    "counter": 1001,
+    "msg": "hello",
+    "hmac": "..."
+}
+
+response = await gateway.process(msg)
+print(response.status, response.reason)
 ```
 
-
 ---
 
-## ▶️ Getting Started
-```bash
-git clone https://github.com/ingDin/secure-message-gateway
-cd secure-message-gateway
-pip install -r requirements.txt
-pytest -v
-```
----
-## 📌 Roadmap
+## ⭐ 6. **Keywords**
 
-- REST API interface
-- Selenium monitoring dashboard 
-- AES-GCM encryption layer 
-- CI/CD pipeline 
-- Performance & stress tests
+```md
+## 🔍 Keywords
 
+🔐 HMAC  
+🔒 SHA256  
+📡 message gateway  
+🕒 freshness counter  
+🛡️ anti‑replay  
+📝 audit logging  
+📜 deterministic pipeline  
+🐍 Python security  
+🔌 embedded messaging  
+📦 secure PDU  
+🔐 crypto validation  
+🔄 key rotation  
+⚡ async gateway  
+🧱 structured logging  
+📏 schema validation  
+🔐 secure communication  
 
-## 📄 License
-MIT
