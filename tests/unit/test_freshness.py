@@ -1,12 +1,19 @@
 """
-Unit tests for FreshnessManager.
+Unit test suite for FreshnessManager.
 
-Covers:
-- monotonicity rules
-- increment rules
-- drift rules
-- async load/store
-- successful update
+This module validates the foundational behavior of the freshness subsystem,
+ensuring deterministic enforcement of monotonicity rules, increment boundaries,
+drift constraints, and correct async persistence semantics.
+
+The suite covers:
+- monotonicity and replay protection
+- increment validation (min/max)
+- drift enforcement
+- async load/store correctness
+- successful update behavior
+
+These tests guarantee that upstream gateway components relying on freshness
+validation receive predictable, stable, and contract-respecting behavior.
 """
 
 import pytest
@@ -23,7 +30,14 @@ from secure_gateway.exceptions import FreshnessError
 @pytest.fixture
 def fm_factory(tmp_path, config_factory):
     """
-    Build a FreshnessManager + counter file using config_factory.
+    Provide a factory that constructs a FreshnessManager instance along with
+    an isolated counter file.
+
+    This ensures:
+    - deterministic state initialization for each test
+    - no shared persistence across tests
+    - full isolation of freshness.json semantics
+    - reproducible behavior for async load/store operations
     """
     def _create(last_value: int):
         counter_file = tmp_path / "freshness.json"
@@ -63,7 +77,22 @@ ERR_DRIFT = "drift too large"
 # ============================================================================
 
 class TestFreshnessManager:
-    """Minimal test suite for FreshnessManager."""
+    """
+    Unit test suite validating the correctness, stability,
+    and contract guarantees of FreshnessManager.
+
+    This suite ensures that:
+    - invalid increments are rejected deterministically with domain-specific
+      errors
+    - monotonicity and replay protection behave predictably
+    - increment and drift constraints are enforced exactly as configured
+    - async load/store operations persist and retrieve freshness state reliably
+    - successful updates produce correct counter progression
+
+    These checks validate the reliability of the freshness subsystem, which
+    forms the foundation for replay protection and state consistency in the
+    gateway pipeline.
+    """
 
     # ----------------------------------------------------------------------
     # Failure scenarios
@@ -79,7 +108,10 @@ class TestFreshnessManager:
         ]
     )
     async def test_freshness_failures(self, fm_factory, last, incoming, expected_error):
-        """validate_and_update_async should reject invalid increments."""
+        """
+        validate_and_update_async must reject invalid increments and raise
+        FreshnessError with the correct domain-specific reason.
+        """
         fm, _ = fm_factory(last)
 
         with pytest.raises(FreshnessError) as exc:
@@ -92,7 +124,10 @@ class TestFreshnessManager:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_freshness_success(self, fm_factory):
-        """validate_and_update_async should update counter when rules pass."""
+        """
+        validate_and_update_async must update the counter when all freshness
+        rules pass.
+        """
         fm, counter_file = fm_factory(VALID_LAST)
         await fm.validate_and_update_async(VALID_INCOMING)
 
@@ -104,7 +139,9 @@ class TestFreshnessManager:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_load_async(self, fm_factory):
-        """load_async should return the stored counter."""
+        """
+        load_async must return the persisted counter value exactly as stored.
+        """
         fm, _ = fm_factory(VALID_LAST)
         assert await fm.load_async() == VALID_LAST
 
@@ -113,7 +150,9 @@ class TestFreshnessManager:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_store_async(self, fm_factory):
-        """store_async should write the new counter to disk."""
+        """
+        store_async must persist the new counter value to disk reliably.
+        """
         fm, counter_file = fm_factory(VALID_LAST)
         await fm.store_async(STORE_VALUE)
 

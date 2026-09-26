@@ -1,11 +1,20 @@
 """
-Unit tests for SchemaValidator.
+Unit test suite for SchemaValidator.
 
-Covers:
-- successful validation of correct messages
-- structural validation failures
-- type constraints
-- additionalProperties violations
+This module validates the correctness, stability, and failure behavior of the
+schema-validation subsystem responsible for enforcing structural, type, and
+constraint correctness of incoming gateway messages.
+
+The suite covers:
+- successful validation of structurally correct messages
+- structural validation failures (missing required fields)
+- type constraint violations
+- numeric and string constraint enforcement
+- additionalProperties rejection
+
+These tests guarantee that upstream gateway components relying on SchemaValidator
+receive predictable, strict, and contract-respecting behavior before any
+cryptographic or freshness logic is executed.
 """
 
 import pytest
@@ -33,13 +42,27 @@ INVALID_MESSAGES = [
 # ============================================================================
 
 class TestSchemaValidator:
-    """Minimal test suite for SchemaValidator."""
+    """
+    Unit test suite validating the correctness, stability,
+    and contract guarantees of SchemaValidator.
+
+    This suite ensures that:
+    - valid messages pass validation without raising exceptions
+    - invalid messages fail deterministically with SchemaError
+    - structural, type, and constraint violations are detected precisely
+    - additionalProperties rules are enforced strictly
+
+    These checks validate the reliability of the schema-validation layer, which
+    forms the first and immutable gate in the gateway’s security pipeline.
+    """
 
     # ----------------------------------------------------------------------
     # Valid message
     # ----------------------------------------------------------------------
     def test_validate_success(self):
-        """A valid message should pass validation."""
+        """
+        validate() must accept structurally correct messages without raising errors.
+        """
         SchemaValidator.validate(VALID_MESSAGE)
 
     # ----------------------------------------------------------------------
@@ -47,6 +70,11 @@ class TestSchemaValidator:
     # ----------------------------------------------------------------------
     @pytest.mark.parametrize("message", INVALID_MESSAGES)
     def test_validate_failures(self, message):
-        """Invalid messages should raise SchemaError."""
+        """
+        validate() must raise SchemaError for any message violating schema rules.
+
+        This ensures deterministic rejection of malformed payloads before they
+        reach cryptographic or freshness subsystems.
+        """
         with pytest.raises(SchemaError):
             SchemaValidator.validate(message)

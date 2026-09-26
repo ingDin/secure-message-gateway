@@ -1,29 +1,43 @@
 """
-Shared pytest fixtures for the test suite.
+Shared pytest fixtures for the secure-message-gateway test suite.
 
-Provides:
-- json_file_factory: helper for writing JSON files in tmp_path
+This module provides reusable, deterministic helpers that support both unit and
+integration tests by abstracting common filesystem setup patterns. It ensures:
+
+- consistent creation of temporary JSON files across all test modules
+- isolated, reproducible filesystem behavior via pytest's tmp_path fixture
+- simplified test authoring by centralizing JSON file generation logic
+- reliable encoding and serialization semantics suitable for cryptographic,
+  freshness, and audit-related test scenarios
+
+These fixtures form foundational infrastructure for the gateway’s test suite,
+enabling clean, maintainable, and predictable test environments across
+security‑critical components.
 """
 
 import json
 import pytest
 
 
-# ============================================================================
-# JSON file factory
-# ============================================================================
-
 @pytest.fixture
 def json_file_factory(tmp_path):
     """
-    Create a JSON file inside tmp_path and return its path.
+    Factory fixture producing JSON files inside the test’s isolated tmp_path.
+
+    This helper ensures:
+    - deterministic creation of structured JSON files for tests
+    - consistent UTF‑8 encoding across all modules
+    - reproducible filesystem behavior independent of environment
+    - simplified setup for tests requiring configuration, key material,
+      freshness state, or audit log scaffolding
 
     Parameters:
-        filename (str): Name of the file to create.
-        content (dict): JSON-serializable content to write.
+        filename (str): Name of the JSON file to create.
+        content (dict): JSON‑serializable dictionary to write.
 
     Returns:
-        Path: Full path to the created file.
+        Callable[[str, dict], Path]:
+            A factory function that writes the JSON file and returns its full path.
     """
     def _create(filename: str, content: dict):
         path = tmp_path / filename

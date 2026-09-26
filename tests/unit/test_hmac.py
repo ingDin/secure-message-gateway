@@ -1,11 +1,19 @@
 """
-Unit tests for HMACAlgorithm.
+Unit test suite for HMACAlgorithm.
 
-Covers:
-- key generation
-- async key loading (valid + invalid)
-- sync signing/verification
-- async signing/verification
+This module validates the foundational behavior of the HMAC-based cryptographic
+subsystem, ensuring deterministic key generation, strict validation of key
+material, and correct signing/verification semantics in both synchronous and
+asynchronous execution paths.
+
+The suite covers:
+- secure key generation
+- async key loading (valid and invalid configurations)
+- synchronous signing and verification
+- asynchronous signing and verification
+
+These tests guarantee that upstream gateway components relying on HMACAlgorithm
+receive predictable, stable, and contract-respecting behavior.
 """
 
 import pytest
@@ -23,8 +31,13 @@ from secure_gateway.exceptions import HMACError
 @pytest.fixture
 def crypto_unit_config_factory(tmp_path):
     """
-    Create a minimal crypto config for unit tests.
-    Allows overriding crypto fields.
+    Provide a minimal crypto configuration suitable for isolated unit testing.
+
+    This factory ensures:
+    - deterministic configuration of crypto parameters
+    - isolated key file paths for each test
+    - reproducible behavior of key-loading logic
+    - full control over algorithm constraints (min length, allowed algorithms)
     """
     def _factory(overrides=None):
         base = {
@@ -53,13 +66,22 @@ def crypto_unit_config_factory(tmp_path):
 
 @pytest.fixture
 def hmac_algo():
-    """Return a fresh HMACAlgorithm instance."""
+    """
+    Provide a fresh HMACAlgorithm instance.
+
+    Ensures that each test executes against a clean cryptographic object without
+    shared state or cached keys.
+    """
     return HMACAlgorithm()
 
 
 @pytest.fixture
 def hex_key_bytes():
-    """Return cryptographically secure random bytes."""
+    """
+    Provide cryptographically secure random bytes for signing operations.
+
+    Ensures deterministic test behavior while preserving realistic key entropy.
+    """
     return bytearray.fromhex(os.urandom(16).hex())
 
 
@@ -78,13 +100,29 @@ MAC_HEX_LENGTH = 64  # SHA256 hex digest length
 # ============================================================================
 
 class TestHMACAlgorithm:
-    """Minimal test suite for HMACAlgorithm."""
+    """
+    Unit test suite validating the correctness, stability,
+    and contract guarantees of HMACAlgorithm.
+
+    This suite ensures that:
+    - key generation produces valid, secure hex-encoded material
+    - async key loading enforces strict validation rules and rejects malformed
+      or unauthorized configurations
+    - synchronous signing and verification behave deterministically
+    - asynchronous signing and verification mirror sync behavior while ensuring
+      correct coroutine semantics
+
+    These checks validate the reliability of the HMAC subsystem, which forms
+    the cryptographic foundation of the gateway pipeline.
+    """
 
     # ----------------------------------------------------------------------
     # Key generation
     # ----------------------------------------------------------------------
     def test_generate_key(self, hmac_algo):
-        """generate_key should return a valid hex string of correct length."""
+        """
+        generate_key must return a valid hex string of the requested length.
+        """
         key = hmac_algo.generate_key(16)
         assert isinstance(key, str)
         assert len(bytes.fromhex(key)) == 16
@@ -106,7 +144,10 @@ class TestHMACAlgorithm:
         self, hmac_algo, json_file_factory, crypto_unit_config_factory,
         keys_content, config_override, expected_error
     ):
-        """load_key_async should reject invalid key configurations."""
+        """
+        load_key_async must reject invalid key configurations and raise
+        HMACError with the correct domain-specific reason.
+        """
         json_file_factory("keys.json", keys_content)
         config = crypto_unit_config_factory(config_override)
 
@@ -122,7 +163,9 @@ class TestHMACAlgorithm:
     async def test_load_key_async_valid(
         self, hmac_algo, json_file_factory, crypto_unit_config_factory
     ):
-        """load_key_async should return the decoded key when valid."""
+        """
+        load_key_async must return the decoded key when configuration is valid.
+        """
         json_file_factory("keys.json", {"dev_key": VALID_KEY})
         config = crypto_unit_config_factory()
 
@@ -133,7 +176,9 @@ class TestHMACAlgorithm:
     # Sync signing
     # ----------------------------------------------------------------------
     def test_sign(self, hmac_algo, hex_key_bytes):
-        """sign() should return a valid SHA256 hex digest."""
+        """
+        sign() must return a valid SHA256 hex digest.
+        """
         mac = hmac_algo.sign({"a": 1}, hex_key_bytes)
         assert isinstance(mac, str)
         assert len(mac) == MAC_HEX_LENGTH
@@ -142,12 +187,16 @@ class TestHMACAlgorithm:
     # Sync verification
     # ----------------------------------------------------------------------
     def test_verify_success(self, hmac_algo, hex_key_bytes):
-        """verify() should not raise when MAC is correct."""
+        """
+        verify() must accept correct MACs without raising exceptions.
+        """
         mac = hmac_algo.sign({"x": 10}, hex_key_bytes)
         hmac_algo.verify({"x": 10}, hex_key_bytes, mac)
 
     def test_verify_fail(self, hmac_algo, hex_key_bytes):
-        """verify() should raise HMACError for tampered MAC."""
+        """
+        verify() must raise HMACError when MAC is tampered.
+        """
         mac = hmac_algo.sign({"x": 10}, hex_key_bytes)
         with pytest.raises(HMACError):
             hmac_algo.verify({"x": 10}, hex_key_bytes, mac + "00")
@@ -157,7 +206,9 @@ class TestHMACAlgorithm:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_sign_async(self, hmac_algo, hex_key_bytes):
-        """sign_async should return a valid SHA256 hex digest."""
+        """
+        sign_async must return a valid SHA256 hex digest.
+        """
         mac = await hmac_algo.sign_async({"a": 1}, hex_key_bytes)
         assert isinstance(mac, str)
         assert len(mac) == MAC_HEX_LENGTH
@@ -167,6 +218,8 @@ class TestHMACAlgorithm:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_verify_async_success(self, hmac_algo, hex_key_bytes):
-        """verify_async should not raise when MAC is correct."""
+        """
+        verify_async must accept correct MACs without raising exceptions.
+        """
         mac = await hmac_algo.sign_async({"a": 1}, hex_key_bytes)
         await hmac_algo.verify_async({"a": 1}, hex_key_bytes, mac)

@@ -1,11 +1,18 @@
 """
-Unit tests for KeyManager.
+Unit test suite for KeyManager.
 
-Covers:
+This module validates the correctness, stability, and failure behavior of the
+key‑rotation subsystem responsible for generating new cryptographic keys,
+archiving old ones, and enforcing rotation interval policies.
+
+The suite covers:
 - rotation interval logic
-- successful key rotation
-- archival behavior
-- error propagation
+- successful key rotation and archival behavior
+- deterministic error propagation from dependent subsystems
+- correct interaction with algorithm registry, key loader, key writer, and audit
+
+These tests guarantee that upstream gateway components relying on KeyManager
+receive predictable, safe, and contract‑respecting behavior.
 """
 
 import pytest
@@ -37,7 +44,13 @@ PATCH_IO = "aiofiles.open"
 @pytest.fixture
 def key_manager_config_factory(tmp_path, config_factory):
     """
-    Build a minimal config for KeyManager tests, with proper crypto + audit paths.
+    Provide a minimal KeyManager configuration with isolated key and audit paths.
+
+    This ensures:
+    - deterministic filesystem behavior for each test
+    - isolated key files and archives
+    - reproducible rotation interval logic
+    - controlled audit logging environment
     """
     def _create(overrides=None):
         return config_factory({
@@ -66,19 +79,36 @@ def key_manager_config_factory(tmp_path, config_factory):
 # ============================================================================
 
 class TestKeyManager:
-    """Minimal test suite for KeyManager."""
+    """
+    Unit test suite validating the correctness, stability,
+    and contract guarantees of KeyManager.
+
+    This suite ensures that:
+    - rotation interval logic behaves deterministically
+    - successful rotation updates key files and archives old keys
+    - dependent subsystem failures propagate as HMACError
+    - algorithm registry, key loader, key writer, and audit interactions are
+      validated in isolation
+
+    These checks validate the reliability of the key‑rotation subsystem, which
+    forms a critical part of the gateway’s cryptographic lifecycle.
+    """
 
     # ----------------------------------------------------------------------
     # Rotation interval logic
     # ----------------------------------------------------------------------
     def test_rotation_needed_true(self, key_manager_config_factory):
-        """Should return True when rotation interval has elapsed."""
+        """
+        rotation_needed must return True when the configured interval has elapsed.
+        """
         config = key_manager_config_factory()
         last = datetime.now(timezone.utc) - timedelta(days=10)
         assert KeyManager.rotation_needed(config, last)
 
     def test_rotation_needed_false(self, key_manager_config_factory):
-        """Should return False when rotation interval has NOT elapsed."""
+        """
+        rotation_needed must return False when the rotation interval has not elapsed.
+        """
         config = key_manager_config_factory()
         last = datetime.now(timezone.utc)
         assert not KeyManager.rotation_needed(config, last)
@@ -90,7 +120,13 @@ class TestKeyManager:
     async def test_rotate_async_success(
         self, key_manager_config_factory, json_file_factory, tmp_path
     ):
-        """Successful rotation should update keys, archive old key, and log event."""
+        """
+        rotate_async must:
+        - generate a new key
+        - update keys.json
+        - archive the old key
+        - log the rotation event
+        """
         config = key_manager_config_factory()
 
         json_file_factory("keys.json", {"dev_key": OLD_KEY})
@@ -139,7 +175,12 @@ class TestKeyManager:
         self, key_manager_config_factory, json_file_factory, tmp_path,
         keys_content, config_override, patch_target, patch_effect
     ):
-        """rotate_async should raise HMACError when any dependency fails."""
+        """
+        rotate_async must raise HMACError when any dependency fails.
+
+        This ensures deterministic failure propagation and prevents partial or
+        inconsistent key‑rotation states.
+        """
         config = key_manager_config_factory(config_override)
         json_file_factory("keys.json", keys_content)
 

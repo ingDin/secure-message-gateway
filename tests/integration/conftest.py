@@ -1,35 +1,47 @@
 """
-Shared pytest fixtures for integration tests.
+Enterprise-level shared pytest fixtures for constructing fully initialized
+integration configurations used throughout the secure-message-gateway test suite.
 
-Provides:
-- integration_config_factory: full config builder with initialized temp files
+This module provides deterministic, reproducible helpers that assemble complete
+gateway configurations backed by temporary filesystem state. It ensures:
+
+- consistent creation of all persistence-layer artifacts required by integration
+  tests (keys.json, keys_archive.json, freshness.json, audit.log, gateway.log)
+- isolated and reproducible filesystem behavior via pytest’s tmp_path fixture
+- stable initialization semantics for cryptographic, freshness, logging, and
+  audit subsystems
+- simplified test authoring by centralizing integration configuration setup
+
+These fixtures form foundational infrastructure for the gateway’s integration
+tests, enabling predictable, maintainable, and security‑focused test environments
+across all pipeline layers.
 """
+
 
 import json
 import pytest
 from pathlib import Path
 
 
-# ============================================================================
-# Full integration config factory
-# ============================================================================
-
 @pytest.fixture
 def integration_config_factory(tmp_path, config_factory):
     """
-    Build a full integration config with temporary paths and initialized files.
+    Factory fixture producing fully initialized integration configurations with
+    deterministic filesystem scaffolding.
 
-    Creates:
-        - keys.json
-        - keys_archive.json
-        - freshness.json
-        - audit.log
-        - gateway.log
+    This helper ensures:
+    - creation of all required persistence files (keys.json, keys_archive.json,
+      freshness.json, audit.log, gateway.log)
+    - stable initialization of cryptographic, freshness, logging, and audit
+      configuration blocks
+    - reproducible test environments independent of host system state
+    - seamless integration with config_factory for safe override merging
 
     Returns:
-        Callable[[], dict]: A function that produces a complete integration config.
+        Callable[[], dict]:
+            A factory function that constructs and returns a complete integration
+            configuration dictionary suitable for end-to-end gateway testing.
     """
-
     def _factory():
         # Paths
         keys_path = tmp_path / "keys.json"

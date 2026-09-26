@@ -109,7 +109,6 @@ class GatewayAsync:
 
             await self.audit.log_event(error_type, {
                 "error": str(exc),
-                "exception_type": exc.__class__.__name__
             })
 
             return GatewayResponse(status="error", reason=error_type)
