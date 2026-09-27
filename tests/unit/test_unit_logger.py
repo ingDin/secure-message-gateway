@@ -1,18 +1,20 @@
 """
 Unit test suite for AuditLogger.
 
-This module validates the correctness, stability, and failure behavior of the
-audit logging subsystem responsible for producing append-only, JSON-lines
-structured audit events. It ensures deterministic handling of:
+@resume
+    Validates the correctness, stability, and failure behavior of the audit
+    logging subsystem responsible for producing append-only, JSON-lines
+    structured audit events.
 
-- successful event logging
-- invalid payload serialization failures
-- I/O failures during async writes
-- correct append behavior for multiple sequential events
+@scope
+    - successful event logging
+    - invalid payload serialization failures
+    - I/O failures during async writes
+    - correct append behavior for multiple sequential events
 
-These tests guarantee that upstream gateway components relying on AuditLogger
-receive predictable, safe, and contract-respecting behavior, with reliable
-forensic traceability.
+@ensures
+    Upstream gateway components relying on AuditLogger receive predictable,
+    safe, and contract‑respecting behavior, with reliable forensic traceability.
 """
 
 import pytest
@@ -29,12 +31,16 @@ from secure_gateway.logger import AuditLogger
 @pytest.fixture
 def log_path(tmp_path):
     """
-    Provide an isolated temporary audit.log path.
+    @resume
+        Provides an isolated temporary audit.log path.
 
-    Ensures:
-    - deterministic filesystem behavior
-    - no shared audit state across tests
-    - reproducible append-only semantics
+    @scope
+        - deterministic filesystem behavior
+        - isolated audit state
+        - reproducible append-only semantics
+
+    @returns
+        Path to a temporary audit.log file.
     """
     return tmp_path / "audit.log"
 
@@ -42,12 +48,16 @@ def log_path(tmp_path):
 @pytest.fixture
 def audit_logger(log_path):
     """
-    Provide an AuditLogger instance bound to the temporary log file.
+    @resume
+        Provides an AuditLogger instance bound to the temporary log file.
 
-    Guarantees:
-    - isolated logging context
-    - predictable event ordering
-    - clean state for each test
+    @scope
+        - isolated logging context
+        - predictable event ordering
+        - clean state for each test
+
+    @returns
+        A fresh AuditLogger instance.
     """
     return AuditLogger(log_path)
 
@@ -58,17 +68,18 @@ def audit_logger(log_path):
 
 class TestAuditLogger:
     """
-    Unit test suite validating the correctness, stability,
-    and contract guarantees of AuditLogger.
+    @resume
+        Contract validation suite for AuditLogger.
 
-    This suite ensures that:
-    - valid events are serialized and persisted correctly
-    - invalid payloads fail deterministically with TypeError
-    - I/O failures propagate without silent corruption
-    - multiple events append in strict order, preserving audit integrity
+    @scope
+        - deterministic JSON-lines serialization
+        - strict failure signaling for invalid payloads
+        - reliable async write semantics
+        - correct append-only ordering
 
-    These checks validate the reliability of the audit subsystem, which forms
-    the backbone of observability and forensic traceability in the gateway.
+    @ensures
+        The audit subsystem behaves predictably and supports forensic
+        traceability across the gateway pipeline.
     """
 
     # ----------------------------------------------------------------------
@@ -77,10 +88,17 @@ class TestAuditLogger:
     @pytest.mark.asyncio
     async def test_log_event_success(self, audit_logger, log_path):
         """
-        log_event must serialize and persist valid payloads as JSON-lines.
+        @resume
+            Validates successful event logging.
         """
+
+        # --- Arrange ---
+        # audit_logger + log_path fixtures already provide isolated state
+
+        # --- Act ---
         await audit_logger.log_event("TEST", {"x": 1})
 
+        # --- Assert ---
         entry = json.loads(log_path.read_text())
         assert entry["event"] == "TEST"
         assert entry["payload"] == {"x": 1}
@@ -92,14 +110,15 @@ class TestAuditLogger:
     @pytest.mark.asyncio
     async def test_log_event_invalid_payload(self, audit_logger):
         """
-        log_event must raise TypeError when payload is not JSON-serializable.
-
-        This ensures deterministic failure behavior and prevents malformed
-        audit entries from being written.
+        @resume
+            Validates deterministic rejection of non‑serializable payloads.
         """
+
+        # --- Arrange ---
         class NotSerializable:
             pass
 
+        # --- Act / Assert ---
         with pytest.raises(TypeError):
             await audit_logger.log_event("BAD", {"obj": NotSerializable()})
 
@@ -109,10 +128,14 @@ class TestAuditLogger:
     @pytest.mark.asyncio
     async def test_log_event_io_error(self, audit_logger):
         """
-        log_event must propagate underlying I/O failures without masking them.
-
-        Guarantees that audit corruption cannot occur silently.
+        @resume
+            Validates deterministic propagation of underlying I/O failures.
         """
+
+        # --- Arrange ---
+        # Patch aiofiles.open to simulate I/O failure
+
+        # --- Act / Assert ---
         with patch("aiofiles.open", side_effect=OSError("boom")):
             with pytest.raises(OSError):
                 await audit_logger.log_event("X", {"y": 2})
@@ -123,12 +146,18 @@ class TestAuditLogger:
     @pytest.mark.asyncio
     async def test_log_event_multiple(self, audit_logger, log_path):
         """
-        log_event must append multiple events in strict order, preserving
-        append-only semantics.
+        @resume
+            Validates correct append-only behavior for sequential events.
         """
+
+        # --- Arrange ---
+        # audit_logger + log_path fixtures already provide isolated state
+
+        # --- Act ---
         await audit_logger.log_event("E1", {"a": 1})
         await audit_logger.log_event("E2", {"b": 2})
 
+        # --- Assert ---
         lines = log_path.read_text().splitlines()
         assert len(lines) == 2
 

@@ -1,19 +1,22 @@
 """
 Unit test suite for KeyFileStore.
 
-This module validates the correctness, stability, and failure behavior of the
-key-loading and key-writing subsystem responsible for reading and persisting
-cryptographic key material. It ensures deterministic handling of:
+@resume
+    Validates the correctness, stability, and failure behavior of the
+    key-loading and key-writing subsystem responsible for reading and
+    persisting cryptographic key material.
 
-- valid JSON key files
-- malformed or corrupted JSON
-- missing key files
-- I/O failures during async load
-- correct JSON serialization during async write
-- I/O failures during async write
+@scope
+    - valid JSON key file parsing
+    - malformed or corrupted JSON handling
+    - missing file behavior
+    - I/O failure propagation during async load
+    - correct JSON serialization during async write
+    - I/O failure propagation during async write
 
-These tests guarantee that upstream cryptographic components relying on
-KeyFileStore receive predictable, safe, and contract-respecting behavior.
+@ensures
+    Upstream cryptographic components relying on KeyFileStore receive
+    predictable, safe, and contract-respecting behavior.
 """
 
 import pytest
@@ -40,18 +43,18 @@ PATCH_IO = "aiofiles.open"
 
 class TestKeyFileStore:
     """
-    Unit test suite validating the correctness and robustness
-    of KeyFileStore.
+    @resume
+        Contract validation suite for KeyFileStore.
 
-    This suite ensures that:
-    - valid key files are parsed correctly
-    - corrupted or malformed JSON triggers deterministic failure
-    - missing files produce predictable error behavior
-    - I/O failures during async load and write are surfaced as HMACError
-    - JSON serialization and persistence behave reliably under normal conditions
+    @scope
+        - deterministic JSON parsing
+        - strict failure signaling for malformed or missing files
+        - reliable async persistence semantics
+        - domain-specific error propagation
 
-    These checks validate the reliability of the key-loading subsystem, which
-    forms the foundation for secure cryptographic initialization.
+    @ensures
+        The key-loading subsystem behaves predictably and supports secure
+        cryptographic initialization.
     """
 
     # ----------------------------------------------------------------------
@@ -60,10 +63,28 @@ class TestKeyFileStore:
     @pytest.mark.asyncio
     async def test_load_async_valid(self, json_file_factory):
         """
-        load_async must correctly parse and return valid JSON key material.
+        @resume
+            Validates successful async loading of valid JSON key material.
+
+        @scope
+            - correct JSON parsing
+            - deterministic return of key dictionary
+
+        @returns
+            Parsed key material as a Python dict.
+
+        @ensures
+            load_async returns valid JSON content exactly as stored.
         """
+
+        # --- Arrange ---
         path = json_file_factory("keys.json", VALID_KEYS)
-        assert await KeyFileStore.load_async(path) == VALID_KEYS
+
+        # --- Act ---
+        result = await KeyFileStore.load_async(path)
+
+        # --- Assert ---
+        assert result == VALID_KEYS
 
     # ----------------------------------------------------------------------
     # Async load — failure scenarios
@@ -84,25 +105,35 @@ class TestKeyFileStore:
     )
     async def test_load_async_failures(self, tmp_path, setup, patch_target, patch_effect):
         """
-        load_async must raise HMACError for invalid JSON, missing files,
-        or I/O failures.
+        @resume
+            Validates deterministic rejection of invalid or unreadable key files.
 
-        This ensures deterministic failure behavior and prevents cryptographic
-        initialization from proceeding with invalid or unreadable key material.
+        @scope
+            - malformed JSON detection
+            - missing file behavior
+            - I/O failure propagation
+
+        @raises
+            HMACError
+
+        @ensures
+            load_async signals domain-specific errors for all invalid load
+            conditions, preventing cryptographic initialization with corrupted
+            or unreadable key material.
         """
+
+        # --- Arrange ---
         path = tmp_path / "keys.json"
 
-        # Prepare file if needed
         if callable(setup):
             setup(path)
 
-        # No patch → expect failure directly
+        # --- Act / Assert ---
         if patch_target is None:
             with pytest.raises(HMACError):
                 await KeyFileStore.load_async(path)
             return
 
-        # Patched failure case
         with patch(patch_target, side_effect=patch_effect):
             with pytest.raises(HMACError):
                 await KeyFileStore.load_async(path)
@@ -113,10 +144,27 @@ class TestKeyFileStore:
     @pytest.mark.asyncio
     async def test_write_async_valid(self, tmp_path):
         """
-        write_async must serialize and persist JSON content correctly.
+        @resume
+            Validates successful async persistence of JSON key material.
+
+        @scope
+            - correct JSON serialization
+            - reliable write semantics
+
+        @returns
+            freshness.json updated with the new key material.
+
+        @ensures
+            write_async persists JSON content exactly as provided.
         """
+
+        # --- Arrange ---
         path = tmp_path / "keys.json"
+
+        # --- Act ---
         await KeyFileStore.write_async(path, VALID_KEYS)
+
+        # --- Assert ---
         assert json.loads(path.read_text()) == VALID_KEYS
 
     # ----------------------------------------------------------------------
@@ -125,11 +173,25 @@ class TestKeyFileStore:
     @pytest.mark.asyncio
     async def test_write_async_io_error(self):
         """
-        write_async must raise HMACError when underlying I/O operations fail.
+        @resume
+            Validates deterministic failure behavior when async write operations
+            encounter underlying I/O errors.
 
-        This ensures that key persistence failures are surfaced immediately and
-        do not result in silent corruption or partial writes.
+        @scope
+            - I/O failure propagation
+            - domain-specific error signaling
+
+        @raises
+            HMACError
+
+        @ensures
+            write_async never silently corrupts or partially writes key material.
         """
+
+        # --- Arrange ---
+        # No file needed; patch will intercept I/O
+
+        # --- Act / Assert ---
         with patch(PATCH_IO, side_effect=OSError("io-fail")):
             with pytest.raises(HMACError):
                 await KeyFileStore.write_async(Path("x.json"), VALID_KEYS)

@@ -1,14 +1,17 @@
 """
-Asynchronous message‑processing gateway.
+@summary
+Asynchronous message‑processing gateway responsible for validating, authenticating,
+and auditing incoming messages. The gateway coordinates all security subsystems:
 
-Coordinates:
 - schema validation
 - key rotation (based on config.json)
-- crypto key loading
+- cryptographic key loading
 - HMAC verification
-- freshness rules (delegated to FreshnessManager)
+- freshness enforcement (via FreshnessManager)
 - audit logging
-- structured responses
+- structured response generation
+
+All processing steps are deterministic and produce auditable outcomes.
 """
 
 from __future__ import annotations
@@ -41,16 +44,26 @@ ERROR_MAP = {
 
 class GatewayAsync:
     """
-    Asynchronous security gateway.
+    @summary
+    Asynchronous security gateway implementing the full message‑processing pipeline.
 
-    Pipeline:
+    Pipeline stages:
         1. Schema validation
-        2. Key rotation (if needed)
-        3. Load crypto key
+        2. Key rotation (if required)
+        3. Crypto key loading
         4. HMAC verification
-        5. Freshness checks
+        5. Freshness validation
         6. Audit logging
-        7. Structured response
+        7. Structured response generation
+
+    @parameters
+    config : dict
+        Parsed gateway configuration containing crypto, freshness, audit,
+        and environment settings.
+
+    @examples
+    >>> gateway = GatewayAsync(config)
+    >>> response = await gateway.process(message)
     """
 
     def __init__(self, config: Dict[str, Any]):
@@ -70,10 +83,41 @@ class GatewayAsync:
         # Key manager
         self.key_manager = KeyManager(config)
 
-    # ---------------------------------------------------------
-    # Main entry point
-    # ---------------------------------------------------------
     async def process(self, raw: Dict[str, Any]) -> GatewayResponse:
+        """
+        @summary
+        Process an incoming message through the full security pipeline.
+
+        @parameters
+        raw : dict
+            Incoming message containing:
+            - id
+            - counter
+            - msg
+            - hmac
+
+        @returns
+        GatewayResponse
+            Structured response indicating success or deterministic failure.
+
+        @raises
+        SchemaError
+            If message structure or required fields are invalid.
+        HMACError
+            If signature verification fails.
+        FreshnessError
+            If monotonic counter freshness rules are violated.
+        GatewayError
+            For any other deterministic gateway-level failure.
+
+        @examples
+        >>> response = await gateway.process({
+        ...     "id": "abc",
+        ...     "counter": 42,
+        ...     "msg": "hello",
+        ...     "hmac": "deadbeef"
+        ... })
+        """
         try:
             # 1. Schema validation
             SchemaValidator.validate(raw)
@@ -101,22 +145,31 @@ class GatewayAsync:
             return GatewayResponse(status="ok")
 
         except Exception as exc:
-            # Determine error type
             error_type = next(
                 (code for exc_class, code in ERROR_MAP.items() if isinstance(exc, exc_class)),
                 "UNKNOWN_ERROR"
             )
 
-            await self.audit.log_event(error_type, {
-                "error": str(exc),
-            })
+            await self.audit.log_event(error_type, {"error": str(exc)})
 
             return GatewayResponse(status="error", reason=error_type)
 
-    # ---------------------------------------------------------
-    # Key rotation logic
-    # ---------------------------------------------------------
     async def _check_key_rotation(self) -> None:
+        """
+        @summary
+        Determine whether cryptographic key rotation is required and perform
+        rotation if necessary.
+
+        @returns
+        None
+
+        @raises
+        GatewayError
+            If rotation fails or key archival cannot be read.
+
+        @examples
+        >>> await gateway._check_key_rotation()
+        """
         cfg = self.config["crypto"]
         key_name = f"{self.config['environment']}_key"
 

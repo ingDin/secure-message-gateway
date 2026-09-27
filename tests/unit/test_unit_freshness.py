@@ -1,19 +1,21 @@
 """
 Unit test suite for FreshnessManager.
 
-This module validates the foundational behavior of the freshness subsystem,
-ensuring deterministic enforcement of monotonicity rules, increment boundaries,
-drift constraints, and correct async persistence semantics.
+@resume
+    Validates the foundational behavior of the freshness subsystem, ensuring
+    deterministic enforcement of monotonicity rules, increment boundaries,
+    drift constraints, and correct async persistence semantics.
 
-The suite covers:
-- monotonicity and replay protection
-- increment validation (min/max)
-- drift enforcement
-- async load/store correctness
-- successful update behavior
+@scope
+    - monotonicity and replay protection
+    - increment validation (min/max)
+    - drift enforcement
+    - async load/store correctness
+    - successful update behavior
 
-These tests guarantee that upstream gateway components relying on freshness
-validation receive predictable, stable, and contract-respecting behavior.
+@ensures
+    Upstream gateway components relying on freshness validation receive
+    predictable, stable, and contract-respecting behavior.
 """
 
 import pytest
@@ -30,14 +32,17 @@ from secure_gateway.exceptions import FreshnessError
 @pytest.fixture
 def fm_factory(tmp_path, config_factory):
     """
-    Provide a factory that constructs a FreshnessManager instance along with
-    an isolated counter file.
+    @resume
+        Provides a factory that constructs a FreshnessManager instance along
+        with an isolated counter file.
 
-    This ensures:
-    - deterministic state initialization for each test
-    - no shared persistence across tests
-    - full isolation of freshness.json semantics
-    - reproducible behavior for async load/store operations
+    @scope
+        - deterministic state initialization
+        - isolation of freshness.json semantics
+        - reproducible async load/store behavior
+
+    @returns
+        A tuple (FreshnessManager instance, counter_file path).
     """
     def _create(last_value: int):
         counter_file = tmp_path / "freshness.json"
@@ -78,20 +83,19 @@ ERR_DRIFT = "drift too large"
 
 class TestFreshnessManager:
     """
-    Unit test suite validating the correctness, stability,
-    and contract guarantees of FreshnessManager.
+    @resume
+        Contract validation suite for FreshnessManager.
 
-    This suite ensures that:
-    - invalid increments are rejected deterministically with domain-specific
-      errors
-    - monotonicity and replay protection behave predictably
-    - increment and drift constraints are enforced exactly as configured
-    - async load/store operations persist and retrieve freshness state reliably
-    - successful updates produce correct counter progression
+    @scope
+        - deterministic rejection of invalid increments
+        - predictable monotonicity and replay protection
+        - strict enforcement of increment and drift constraints
+        - reliable async persistence semantics
+        - correct counter progression on successful updates
 
-    These checks validate the reliability of the freshness subsystem, which
-    forms the foundation for replay protection and state consistency in the
-    gateway pipeline.
+    @ensures
+        The freshness subsystem behaves predictably and supports replay
+        protection and state consistency across the gateway pipeline.
     """
 
     # ----------------------------------------------------------------------
@@ -109,11 +113,27 @@ class TestFreshnessManager:
     )
     async def test_freshness_failures(self, fm_factory, last, incoming, expected_error):
         """
-        validate_and_update_async must reject invalid increments and raise
-        FreshnessError with the correct domain-specific reason.
+        @resume
+            Validates deterministic rejection of invalid increments.
+
+        @scope
+            - replay detection
+            - minimum increment enforcement
+            - maximum increment enforcement
+            - drift constraint enforcement
+
+        @raises
+            FreshnessError
+
+        @ensures
+            validate_and_update_async signals domain-specific errors for each
+            invalid freshness condition.
         """
+
+        # --- Arrange ---
         fm, _ = fm_factory(last)
 
+        # --- Act / Assert ---
         with pytest.raises(FreshnessError) as exc:
             await fm.validate_and_update_async(incoming)
 
@@ -125,12 +145,28 @@ class TestFreshnessManager:
     @pytest.mark.asyncio
     async def test_freshness_success(self, fm_factory):
         """
-        validate_and_update_async must update the counter when all freshness
-        rules pass.
+        @resume
+            Validates successful counter update when all freshness rules pass.
+
+        @scope
+            - monotonic increment
+            - valid increment boundaries
+            - acceptable drift
+
+        @returns
+            Updated counter value persisted to freshness.json.
+
+        @ensures
+            validate_and_update_async produces correct counter progression.
         """
+
+        # --- Arrange ---
         fm, counter_file = fm_factory(VALID_LAST)
+
+        # --- Act ---
         await fm.validate_and_update_async(VALID_INCOMING)
 
+        # --- Assert ---
         data = json.loads(counter_file.read_text())
         assert data["counter"] == VALID_INCOMING
 
@@ -140,10 +176,28 @@ class TestFreshnessManager:
     @pytest.mark.asyncio
     async def test_load_async(self, fm_factory):
         """
-        load_async must return the persisted counter value exactly as stored.
+        @resume
+            Validates deterministic retrieval of the persisted counter.
+
+        @scope
+            - async load semantics
+            - correctness of stored counter value
+
+        @returns
+            The exact counter value stored in freshness.json.
+
+        @ensures
+            load_async returns the correct persisted state.
         """
+
+        # --- Arrange ---
         fm, _ = fm_factory(VALID_LAST)
-        assert await fm.load_async() == VALID_LAST
+
+        # --- Act ---
+        value = await fm.load_async()
+
+        # --- Assert ---
+        assert value == VALID_LAST
 
     # ----------------------------------------------------------------------
     # Async store
@@ -151,10 +205,26 @@ class TestFreshnessManager:
     @pytest.mark.asyncio
     async def test_store_async(self, fm_factory):
         """
-        store_async must persist the new counter value to disk reliably.
+        @resume
+            Validates reliable persistence of updated counter values.
+
+        @scope
+            - async write semantics
+            - JSON serialization correctness
+
+        @returns
+            freshness.json updated with the new counter value.
+
+        @ensures
+            store_async writes the correct counter value to disk.
         """
+
+        # --- Arrange ---
         fm, counter_file = fm_factory(VALID_LAST)
+
+        # --- Act ---
         await fm.store_async(STORE_VALUE)
 
+        # --- Assert ---
         data = json.loads(counter_file.read_text())
         assert data["counter"] == STORE_VALUE

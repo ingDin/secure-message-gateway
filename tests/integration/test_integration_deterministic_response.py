@@ -1,22 +1,23 @@
 """
-Integration test suite validating deterministic response
-behavior within the secure-message-gateway pipeline.
+Integration test suite validating deterministic response behavior within the
+secure-message-gateway pipeline.
 
-This module ensures that the gateway produces stable, reproducible outcomes
-for structurally identical messages under normal operating conditions. It
-verifies that:
+@resume
+    Ensures that the gateway produces stable, reproducible outcomes for
+    structurally identical messages under normal operating conditions.
 
-- sequential messages with identical structure and valid HMAC signatures
-  yield consistent status/reason fields
-- monotonic counter progression does not alter semantic validation outcomes
-- stateful subsystems (freshness manager, audit logger, key loader) behave
-  deterministically when exercised in sequence
-- the gateway maintains predictable end-to-end behavior required for
-  safety-critical, audit-driven, and industrial message-processing workflows
+@scope
+    - sequential messages with identical structure and valid HMAC signatures
+      yield consistent status/reason fields
+    - monotonic counter progression does not alter semantic validation outcomes
+    - stateful subsystems (freshness manager, audit logger, key loader) behave
+      deterministically when exercised in sequence
+    - predictable end-to-end behavior required for safety-critical, audit-driven,
+      and industrial message-processing workflows
 
-These guarantees reinforce the architectural contract that the gateway must
-remain fully deterministic for valid message flows, enabling reliable
-integration with upstream and downstream systems.
+@ensures
+    The gateway remains fully deterministic for valid message flows, enabling
+    reliable integration with upstream and downstream systems.
 """
 
 import pytest
@@ -29,33 +30,43 @@ from secure_gateway.hmac import HMACAlgorithm
 
 class TestDeterministicResponse:
     """
-    Integration test suite validating deterministic behavior of the gateway’s
-    end‑to‑end message‑processing pipeline under normal operating conditions.
+    @resume
+        Integration test suite validating deterministic behavior of the gateway’s
+        end‑to‑end message‑processing pipeline under normal operating conditions.
 
-    This class ensures that:
-    - sequential messages with identical structure and valid cryptographic
-      signatures produce stable, reproducible response patterns
-    - freshness progression (monotonic counter increments) does not alter
-      the semantic outcome of message validation
-    - the gateway maintains consistent status/reason fields across equivalent
-      validation paths, a critical requirement for safety‑critical and
-      audit‑driven systems
-    - deterministic behavior is preserved even when stateful components
-      (freshness manager, audit logger, key loader) are exercised in sequence
+    @scope
+        - stable response patterns for structurally identical messages
+        - consistent status/reason fields across equivalent validation paths
+        - deterministic behavior even when stateful components are exercised
+          sequentially (freshness manager, audit logger, key loader)
+        - predictable semantics required for safety‑critical and audit‑driven systems
 
-    These guarantees reinforce the architectural contract that the gateway
-    behaves predictably for valid message flows, enabling reliable integration
-    with upstream and downstream systems in industrial or embedded deployments.
+    @ensures
+        The gateway behaves predictably for valid message flows, reinforcing
+        architectural guarantees for industrial and embedded deployments.
     """
 
     @pytest.mark.asyncio
     async def test_deterministic_response(self, integration_config_factory):
         """
-        Deterministic response:
-        - same structure → same status pattern
-        - counter differs to avoid freshness replay
-        """
+        @resume
+            Validates deterministic response behavior for two structurally identical
+            messages whose counters differ only to avoid freshness replay.
 
+        @scope
+            - identical message structure
+            - valid HMAC signatures
+            - monotonic counter progression
+            - consistent status/reason fields across sequential processing
+
+        @returns
+            Two GatewayResponse objects with identical status/reason fields.
+
+        @ensures
+            The gateway produces stable, reproducible outcomes for equivalent
+            message flows, preserving deterministic behavior across stateful
+            components.
+        """
         config = integration_config_factory()
         gateway = GatewayAsync(config)
         algo = HMACAlgorithm()

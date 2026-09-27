@@ -1,24 +1,23 @@
 """
-Integration test suite validating strict monotonicity
-enforcement and deterministic failure behavior within the gateway’s freshness
-pipeline.
+Integration test suite validating strict monotonicity enforcement and
+deterministic failure behavior within the gateway’s freshness pipeline.
 
-This module ensures that the gateway:
+@resume
+    Ensures that the gateway rejects messages whose counters fail to advance
+    relative to persisted freshness state, enforcing strict monotonicity rules
+    required for replay protection and ordering guarantees.
 
-- rejects messages whose counters fail to advance relative to persisted
-  freshness state
-- produces a stable, reproducible `FRESHNESS_FAIL` response for abnormal
-  increments such as identical or regressive counter values
-- halts pipeline execution immediately upon freshness violation, preventing
-  downstream components (cryptographic verification, rotation, audit sequencing)
-  from overriding fail-fast semantics
-- records the failure as the final append-only audit event, preserving
-  forensic-grade traceability and deterministic observability
+@scope
+    - rejection of identical or regressive counter values
+    - deterministic `FRESHNESS_FAIL` response for abnormal increments
+    - fail-fast pipeline semantics preventing downstream overrides
+    - append-only audit logging of failure events for forensic traceability
+    - predictable behavior under stateful conditions in distributed or
+      safety-critical deployments
 
-These guarantees reinforce the architectural requirement that monotonic counter
-progression must be strictly enforced to prevent replay-adjacent attacks,
-state desynchronization, and ordering violations in distributed or
-safety-critical deployments.
+@ensures
+    The gateway enforces monotonic counter progression rigorously, preventing
+    replay-adjacent attacks, state desynchronization, and ordering violations.
 """
 
 import pytest
@@ -31,36 +30,44 @@ from secure_gateway.hmac import HMACAlgorithm
 
 class TestAbnormalIncrement:
     """
-    Integration test suite validating strict monotonicity enforcement within the
-    gateway’s freshness subsystem.
+    @resume
+        Integration test suite validating strict monotonicity enforcement within
+        the gateway’s freshness subsystem.
 
-    This class ensures that:
-    - the gateway correctly rejects messages whose counter does not advance
-      relative to the persisted freshness state
-    - abnormal increments (e.g., identical counter values) trigger a deterministic
-      `FRESHNESS_FAIL` response, preventing replay‑adjacent attacks
-    - cryptographic verification and schema validation do not override freshness
-      violations, preserving the pipeline’s fail‑fast semantics
-    - audit logging records the failure as the final event, maintaining
-      append‑only behavior and providing reliable forensic traceability
-    - the freshness subsystem behaves predictably under stateful conditions,
-      ensuring that message ordering guarantees remain intact in distributed or
-      safety‑critical environments
+    @scope
+        - deterministic rejection of non-advancing counters
+        - stable `FRESHNESS_FAIL` signaling for abnormal increments
+        - strict separation between freshness validation and cryptographic logic
+        - append-only audit logging of failure events
+        - predictable behavior required for distributed and safety-critical systems
 
-    These checks reinforce the architectural requirement that counter progression
-    must be strictly monotonic, forming the foundation for replay protection and
-    state consistency across long‑running deployments.
+    @ensures
+        The freshness subsystem behaves deterministically under stateful conditions,
+        preserving ordering guarantees and replay protection.
     """
 
     @pytest.mark.asyncio
     async def test_abnormal_increment(self, integration_config_factory):
         """
-        Abnormal increment:
-        - freshness.json counter=10
-        - message counter=10 (no increment)
-        - must produce FRESHNESS_FAIL
+        @resume
+            Validates gateway behavior when incoming counter does not advance
+            relative to persisted freshness state.
+
+        @scope
+            - freshness.json counter = 10
+            - incoming message counter = 10 (no increment)
+            - deterministic `FRESHNESS_FAIL` response
+            - correct audit logging of failure event
+
+        @returns
+            A GatewayResponse with status="error" and reason="FRESHNESS_FAIL".
+
+        @ensures
+            The gateway halts processing immediately upon freshness violation and
+            records the failure as the final append-only audit event.
         """
 
+        # --- Arrange ---
         config = integration_config_factory()
         gateway = GatewayAsync(config)
         algo = HMACAlgorithm()
@@ -76,9 +83,13 @@ class TestAbnormalIncrement:
         mac = algo.sign(payload, key)
         msg = {**payload, "hmac": mac}
 
+        # --- Act ---
         r = await gateway.process(msg)
+
+        # --- Assert ---
         assert r.status == "error"
         assert r.reason == "FRESHNESS_FAIL"
 
         audit_path = Path(config["audit"]["path"])
-        assert json.loads(audit_path.read_text().splitlines()[-1])["event"] == "FRESHNESS_FAIL"
+        last_event = json.loads(audit_path.read_text().splitlines()[-1])
+        assert last_event["event"] == "FRESHNESS_FAIL"

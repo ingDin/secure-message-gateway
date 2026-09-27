@@ -1,20 +1,22 @@
 """
 Unit test suite for SchemaValidator.
 
-This module validates the correctness, stability, and failure behavior of the
-schema-validation subsystem responsible for enforcing structural, type, and
-constraint correctness of incoming gateway messages.
+@resume
+    Validates the correctness, stability, and failure behavior of the
+    schema‑validation subsystem responsible for enforcing structural, type,
+    and constraint correctness of incoming gateway messages.
 
-The suite covers:
-- successful validation of structurally correct messages
-- structural validation failures (missing required fields)
-- type constraint violations
-- numeric and string constraint enforcement
-- additionalProperties rejection
+@scope
+    - successful validation of structurally correct messages
+    - structural validation failures (missing required fields)
+    - type constraint violations
+    - numeric and string constraint enforcement
+    - additionalProperties rejection
 
-These tests guarantee that upstream gateway components relying on SchemaValidator
-receive predictable, strict, and contract-respecting behavior before any
-cryptographic or freshness logic is executed.
+@ensures
+    Upstream gateway components relying on SchemaValidator receive predictable,
+    strict, and contract‑respecting behavior before any cryptographic or
+    freshness logic is executed.
 """
 
 import pytest
@@ -43,17 +45,18 @@ INVALID_MESSAGES = [
 
 class TestSchemaValidator:
     """
-    Unit test suite validating the correctness, stability,
-    and contract guarantees of SchemaValidator.
+    @resume
+        Contract validation suite for SchemaValidator.
 
-    This suite ensures that:
-    - valid messages pass validation without raising exceptions
-    - invalid messages fail deterministically with SchemaError
-    - structural, type, and constraint violations are detected precisely
-    - additionalProperties rules are enforced strictly
+    @scope
+        - deterministic acceptance of valid messages
+        - strict rejection of malformed messages
+        - precise detection of structural, type, and constraint violations
+        - enforcement of additionalProperties rules
 
-    These checks validate the reliability of the schema-validation layer, which
-    forms the first and immutable gate in the gateway’s security pipeline.
+    @ensures
+        The schema‑validation layer behaves predictably and forms the first,
+        immutable gate in the gateway’s security pipeline.
     """
 
     # ----------------------------------------------------------------------
@@ -61,9 +64,18 @@ class TestSchemaValidator:
     # ----------------------------------------------------------------------
     def test_validate_success(self):
         """
-        validate() must accept structurally correct messages without raising errors.
+        @resume
+            Validates successful schema validation for correct messages.
         """
+
+        # --- Arrange ---
+        # VALID_MESSAGE constant already provides a correct payload
+
+        # --- Act ---
         SchemaValidator.validate(VALID_MESSAGE)
+
+        # --- Assert ---
+        # No exception means success; nothing else required
 
     # ----------------------------------------------------------------------
     # Invalid messages
@@ -71,10 +83,13 @@ class TestSchemaValidator:
     @pytest.mark.parametrize("message", INVALID_MESSAGES)
     def test_validate_failures(self, message):
         """
-        validate() must raise SchemaError for any message violating schema rules.
-
-        This ensures deterministic rejection of malformed payloads before they
-        reach cryptographic or freshness subsystems.
+        @resume
+            Validates deterministic rejection of invalid messages.
         """
+
+        # --- Arrange ---
+        # message parameter provides each malformed payload
+
+        # --- Act / Assert ---
         with pytest.raises(SchemaError):
             SchemaValidator.validate(message)

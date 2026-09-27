@@ -1,24 +1,23 @@
 """
-Integration test suite validating deterministic timestamp
-generation across the secure-message-gateway pipeline under frozen-time
-conditions.
+Integration test suite validating deterministic timestamp generation across the
+secure-message-gateway pipeline under frozen-time conditions.
 
-This module ensures that the gateway:
+@resume
+    Ensures that all gateway subsystems—cryptographic verification, freshness
+    management, rotation, and audit logging—use the injected clock rather than
+    system time, producing fully deterministic temporal metadata.
 
-- uses the injected clock (via freezegun) for all audit and rotation events,
-  never relying on system time
-- produces stable, reproducible timestamps independent of runtime environment
-  variability
-- preserves strict temporal ordering between audit entries, including ROTATION
-  and subsequent failure events
-- propagates the frozen clock consistently through all pipeline layers,
-  including cryptographic verification, freshness management, and audit logging
-- maintains forensic-grade traceability and compliance-grade observability
-  required for safety-critical and long-running deployments
+@scope
+    - stable, reproducible timestamps independent of runtime environment
+    - strict temporal ordering of audit events under frozen time
+    - deterministic timestamp propagation across all pipeline layers
+    - compliance-grade observability and forensic traceability
+    - predictable behavior required for long-running and safety-critical systems
 
-These guarantees validate that temporal metadata within audit logs and rotation
-events remains fully deterministic, enabling reliable debugging, auditing, and
-regulatory compliance in environments where timestamp correctness is essential.
+@ensures
+    Temporal metadata remains fully deterministic, enabling reliable debugging,
+    auditing, and regulatory compliance in environments where timestamp
+    correctness is essential.
 """
 
 import pytest
@@ -43,31 +42,38 @@ def ts_equal(actual: str, expected: str) -> bool:
 
 class TestAuditTimestampDeterminism:
     """
-    Integration test suite validating deterministic timestamp generation within
-    the gateway’s audit subsystem.
+    @resume
+        Integration test suite validating deterministic timestamp generation within
+        the gateway’s audit subsystem.
 
-    This class ensures that:
-    - audit events use the injected clock rather than system time
-    - timestamp generation is stable, reproducible, and independent of runtime
-      environment variability
-    - audit entries remain fully deterministic under frozen time conditions,
-      enabling forensic-grade traceability and predictable observability
-    - the gateway’s end-to-end pipeline correctly propagates the mock clock
-      through all logging layers
+    @scope
+        - audit events use the injected clock exclusively
+        - timestamps remain stable and reproducible under frozen time
+        - deterministic propagation of mock time through all logging layers
+        - forensic-grade traceability for safety-critical deployments
 
-    These checks validate that temporal metadata in audit logs is controlled,
-    deterministic, and suitable for safety‑critical deployments.
+    @ensures
+        Audit timestamps remain fully deterministic and independent of system time.
     """
 
     @pytest.mark.asyncio
     async def test_audit_timestamp_determinism(self, integration_config_factory):
         """
-        Audit timestamp determinism:
-        - freeze clock
-        - send valid message
-        - audit timestamp must match frozen time
-        """
+        @resume
+            Validates deterministic audit timestamp generation under frozen time.
 
+        @scope
+            - freeze clock at 2025-01-01T12:00:00Z
+            - process valid message
+            - audit timestamp must match frozen time exactly
+
+        @returns
+            A MESSAGE_ACCEPTED audit entry with deterministic timestamp.
+
+        @ensures
+            The audit subsystem uses the injected clock and preserves deterministic
+            temporal metadata.
+        """
         with freeze_time("2025-01-01T12:00:00Z"):
             config = integration_config_factory()
             gateway = GatewayAsync(config)
@@ -91,29 +97,39 @@ class TestAuditTimestampDeterminism:
 
 class TestRotationTimestampDeterminism:
     """
-    Integration test suite validating deterministic timestamp generation during
-    cryptographic key rotation.
+    @resume
+        Integration test suite validating deterministic timestamp generation during
+        cryptographic key rotation.
 
-    This class ensures that:
-    - rotation events use the injected clock and not system time
-    - rotation audit entries contain stable, reproducible timestamps
-    - rotation and subsequent failure events preserve strict temporal ordering
-    - the gateway’s rotation subsystem behaves deterministically under frozen
-      time conditions, ensuring predictable cryptographic lifecycle behavior
+    @scope
+        - rotation events use the injected clock exclusively
+        - timestamps remain stable and reproducible under frozen time
+        - strict temporal ordering between ROTATION and subsequent failure events
+        - deterministic cryptographic lifecycle behavior under frozen time
 
-    These checks validate that key rotation metadata is fully deterministic and
-    suitable for compliance, auditability, and long‑running secure deployments.
+    @ensures
+        Key rotation metadata remains fully deterministic and suitable for
+        compliance-grade observability.
     """
 
     @pytest.mark.asyncio
     async def test_rotation_timestamp_determinism(self, integration_config_factory):
         """
-        Rotation timestamp determinism:
-        - freeze clock
-        - trigger rotation
-        - ROTATION event must have frozen timestamp
-        """
+        @resume
+            Validates deterministic timestamp generation for ROTATION events.
 
+        @scope
+            - freeze clock at 2030-05-10T08:30:00Z
+            - trigger rotation via invalid key
+            - ROTATION event timestamp must match frozen time
+
+        @returns
+            A ROTATION audit entry with deterministic timestamp.
+
+        @ensures
+            The rotation subsystem uses the injected clock and preserves strict
+            temporal ordering.
+        """
         with freeze_time("2030-05-10T08:30:00Z"):
             config = integration_config_factory()
             config["crypto"]["rotation_required"] = True

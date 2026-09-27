@@ -1,9 +1,11 @@
 """
-Asynchronous audit logger for the secure gateway.
+@summary
+Asynchronous audit logger for the secure‑message‑gateway. Writes structured
+JSON‑lines events using non‑blocking file I/O, ensuring that security‑critical
+events are logged without blocking the asyncio event loop.
 
-Writes structured JSON-lines events using non-blocking file I/O,
-ensuring the gateway can log security-critical events without
-blocking the asyncio event loop.
+Each log entry is a single JSON object written on its own line, enabling
+efficient streaming, tailing, and external ingestion.
 """
 
 from __future__ import annotations
@@ -16,9 +18,10 @@ from typing import Any, Dict
 
 class AuditLogger:
     """
-    Asynchronous JSON-lines audit logger.
-
-    Writes one JSON object per line using aiofiles.
+    @summary
+    Asynchronous JSON‑lines audit logger. Produces deterministic, structured,
+    timestamped log entries suitable for compliance, monitoring, and forensic
+    analysis.
 
     Example log entry:
     {
@@ -26,31 +29,64 @@ class AuditLogger:
         "event": "HMAC_OK",
         "payload": {"id": 42, "counter": 100}
     }
+
+    @parameters
+    log_path : Path
+        Filesystem path to the audit log file.
+
+    @examples
+    >>> logger = AuditLogger(Path("audit.log"))
+    >>> await logger.log_event("MESSAGE_ACCEPTED", {"id": 1})
     """
 
     def __init__(self, log_path: Path) -> None:
         self.log_path = log_path
 
-    # ---------------------------------------------------------
-    # Internal helper: build a structured JSON log entry
-    # ---------------------------------------------------------
     @staticmethod
     def _make_entry(event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        @summary
+        Build a structured audit log entry with a UTC timestamp.
+
+        @parameters
+        event_type : str
+            Short identifier describing the event (e.g., "HMAC_OK", "REPLAY_FAIL").
+        payload : dict
+            Contextual data relevant to the event.
+
+        @returns
+        dict
+            Structured log entry containing timestamp, event type, and payload.
+
+        @examples
+        >>> entry = AuditLogger._make_entry("TEST", {"x": 1})
+        """
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "event": event_type,
             "payload": payload,
         }
 
-    # ---------------------------------------------------------
-    # Append a single structured event asynchronously.
-    # ---------------------------------------------------------
     async def log_event(self, event_type: str, payload: Dict[str, Any]) -> None:
         """
-        Append a structured JSON log entry to the audit log file.
+        @summary
+        Append a structured JSON log entry to the audit log file asynchronously.
 
-        :param event_type: Short identifier (e.g. "HMAC_OK", "REPLAY_FAIL")
-        :param payload: Contextual data relevant to the event
+        @parameters
+        event_type : str
+            Event identifier (e.g., "HMAC_OK", "REPLAY_FAIL").
+        payload : dict
+            Additional contextual information about the event.
+
+        @returns
+        None
+
+        @raises
+        TypeError
+            If the payload is not JSON‑serializable.
+
+        @examples
+        >>> await logger.log_event("MESSAGE_ACCEPTED", {"id": 42})
         """
         entry = self._make_entry(event_type, payload)
 

@@ -1,9 +1,17 @@
 """
-Class-based algorithm registry for the secure gateway.
+@summary
+Provides the class-based registry for cryptographic algorithms used by the
+secure-message-gateway. The registry offers deterministic lookup of crypto
+backends and maintains a global singleton for consistent access across the
+gateway pipeline.
 
-Provides:
-- AlgorithmRegistry (selects the correct crypto backend)
-- ALGORITHM_REGISTRY (global singleton)
+This module ensures:
+- centralized algorithm resolution
+- deterministic validation of algorithm names
+- clean separation between registry logic and concrete implementations
+
+All cryptographic backends must implement the Algorithm interface defined in
+`algorithm_base.py` and be registered here.
 """
 
 from typing import Dict
@@ -16,18 +24,22 @@ from secure_gateway.hmac import HMACAlgorithm
 
 class AlgorithmRegistry:
     """
-    Registry mapping algorithm names to class instances.
+    @summary
+    Registry mapping algorithm identifiers to concrete algorithm instances.
+    Ensures deterministic selection of cryptographic backends and predictable
+    error signaling for unsupported algorithms.
 
-    Responsibilities:
-    - expose available crypto backends
-    - validate algorithm names
-    - provide a global singleton for easy access
+    @examples
+    >>> registry = AlgorithmRegistry()
+    >>> algo = registry.get("HMAC")
+    >>> registry.supports("HMAC")
+    True
     """
 
     def __init__(self):
         self._algorithms: Dict[str, Algorithm] = {
             "HMAC": HMACAlgorithm(),
-            # Future:
+            # Future extensions:
             # "GMAC": GMACAlgorithm(),
             # "CMAC": CMACAlgorithm(),
             # "POLY1305": Poly1305Algorithm(),
@@ -35,8 +47,23 @@ class AlgorithmRegistry:
 
     def get(self, name: str) -> Algorithm:
         """
-        Return the algorithm instance for the given name.
-        Raise HMACError if the name is unknown.
+        @summary
+        Retrieve the algorithm instance associated with the given name.
+
+        @parameters
+        name : str
+            The algorithm identifier (e.g., "HMAC").
+
+        @returns
+        Algorithm
+            The concrete algorithm instance registered under the given name.
+
+        @raises
+        HMACError
+            If the algorithm name is unknown or unsupported.
+
+        @examples
+        >>> algo = registry.get("HMAC")
         """
         try:
             return self._algorithms[name]
@@ -45,7 +72,20 @@ class AlgorithmRegistry:
 
     def supports(self, name: str) -> bool:
         """
-        Return True if the registry contains the given algorithm name.
+        @summary
+        Check whether the registry contains the specified algorithm name.
+
+        @parameters
+        name : str
+            The algorithm identifier to validate.
+
+        @returns
+        bool
+            True if the algorithm is registered, False otherwise.
+
+        @examples
+        >>> registry.supports("HMAC")
+        True
         """
         return name in self._algorithms
 

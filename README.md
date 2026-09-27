@@ -400,9 +400,9 @@ behave
 Specific test modules
 
 ```bash
-pytest tests/test_hmac.py -q
-pytest tests/test_freshness.py -q
-pytest tests/test_gateway.py -q
+pytest tests/unit/test_unit_hmac.py -q
+pytest tests/unit/test_unit_freshness.py -q
+pytest tests/unit/test_unit_gateway.py -q
 ```
 
 ---

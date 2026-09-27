@@ -1,50 +1,60 @@
 """
-Behave environment setup for initializing deterministic,
-fully isolated integration contexts used by the secure-message-gateway
-pipeline.
+Behave environment setup for initializing deterministic, fully isolated
+integration contexts used by the secure-message-gateway pipeline.
 
-This module ensures that each scenario begins with a clean, reproducible
-filesystem state and a fully constructed gateway configuration. It provides:
+@resume
+    Provides reproducible, security-focused initialization scaffolding for
+    Behave scenarios, ensuring each test begins with a clean filesystem state
+    and a fully constructed gateway configuration.
 
-- consistent creation of temporary persistence-layer artifacts
-  (keys.json, keys_archive.json, freshness.json, audit.log, gateway.log)
-- stable initialization semantics for cryptographic, freshness, logging,
-  and audit subsystems
-- predictable behavior across all integration scenarios, independent of
-  host environment variability
-- centralized setup logic that enforces uniformity, maintainability, and
-  security-focused test scaffolding
+@scope
+    - deterministic creation of persistence-layer artifacts:
+        * keys.json
+        * keys_archive.json
+        * freshness.json
+        * audit.log
+        * gateway.log
+    - stable initialization semantics for cryptographic, freshness, logging,
+      and audit subsystems
+    - predictable behavior across integration scenarios, independent of host
+      environment variability
+    - centralized setup logic enforcing uniformity, maintainability, and
+      security-focused test scaffolding
 
-These guarantees form the foundation for deterministic end-to-end testing
-of the gateway’s behavior in safety-critical and distributed deployments.
+@ensures
+    Behave scenarios execute against isolated, reproducible environments,
+    enabling deterministic end-to-end testing for safety-critical and
+    distributed deployments.
 """
 
 import json
 from pathlib import Path
 from secure_gateway.gateway import GatewayAsync
 
+
 def before_scenario(context, scenario):
     """
-    Initialize a fully isolated integration environment for each Behave scenario.
+    @resume
+        Initializes a fully isolated integration environment for each Behave
+        scenario, ensuring deterministic filesystem and configuration state.
 
-    This setup routine ensures:
-    - creation of a dedicated tmp_behave directory for scenario-local state
-    - deterministic initialization of all persistence files required by the
-      gateway (keys.json, keys_archive.json, freshness.json, audit.log,
-      gateway.log)
-    - construction of a complete configuration object with stable defaults for
-      cryptographic, freshness, logging, and audit subsystems
-    - instantiation of a GatewayAsync instance bound to the scenario’s isolated
-      configuration
+    @scope
+        - creation of tmp_behave directory for scenario-local persistence
+        - initialization of all required gateway persistence files
+        - construction of a complete configuration object with stable defaults
+        - instantiation of a GatewayAsync instance bound to isolated state
 
-    Parameters:
-        context: Behave context object used to store scenario-specific state.
-        scenario: The scenario currently being executed.
+    @parameters
+        context:
+            Behave context object used to store scenario-specific state.
+        scenario:
+            The scenario currently being executed.
 
-    The resulting environment guarantees reproducible, security-focused
-    integration behavior across all gateway pipeline tests.
+    @ensures
+        Each scenario begins with a clean, reproducible environment, guaranteeing
+        deterministic gateway behavior across cryptographic, freshness, logging,
+        and audit subsystems.
     """
-
     # Create tmp directory in the current working directory
     context.tmp = Path.cwd() / "tmp_behave"
     context.tmp.mkdir(parents=True, exist_ok=True)

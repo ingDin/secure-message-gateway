@@ -1,24 +1,23 @@
 """
-Integration test suite validating deterministic failure
-behavior when the gateway encounters corrupted cryptographic key material.
+Integration test suite validating deterministic failure behavior when the gateway
+encounters corrupted cryptographic key material.
 
-This module ensures that the gateway:
+@resume
+    Ensures that the gateway halts immediately and deterministically when
+    keys.json contains invalid or unreadable content, enforcing strict
+    cryptographic integrity guarantees required for safety‑critical deployments.
 
-- detects invalid or unreadable keys.json content before performing any
-  cryptographic verification
-- halts the pipeline immediately and produces a stable `HMAC_FAIL` response
-  when key integrity cannot be established
-- prevents downstream components (freshness manager, rotation subsystem,
-  audit sequencing) from overriding or masking key corruption errors
-- records the failure as the final append-only audit event, preserving strict
-  observability guarantees and forensic-grade traceability
-- maintains predictable behavior even when critical cryptographic persistence
-  layers are damaged, a requirement for industrial, embedded, and
-  safety-critical deployments
+@scope
+    - detection of corrupted or malformed key files
+    - deterministic `HMAC_FAIL` response when key integrity cannot be established
+    - fail-fast semantics preventing downstream pipeline execution
+    - append-only audit logging of key corruption failures
+    - predictable behavior under damaged cryptographic persistence layers
 
-These guarantees reinforce the architectural contract that cryptographic key
-integrity must be validated before any pipeline logic executes, ensuring
-secure, deterministic, and auditable message processing.
+@ensures
+    The gateway validates cryptographic key integrity before executing any
+    pipeline logic, preserving operational safety, observability, and forensic
+    traceability.
 """
 
 import pytest
@@ -30,46 +29,58 @@ from secure_gateway.gateway import GatewayAsync
 
 class TestKeyFileCorruption:
     """
-    Integration test suite validating the gateway’s deterministic behavior when
-    encountering corrupted cryptographic key material.
+    @resume
+        Integration test suite validating the gateway’s deterministic behavior when
+        encountering corrupted cryptographic key material.
 
-    This class ensures that:
-    - the gateway detects invalid or unreadable key files before attempting
-      HMAC verification or any downstream pipeline operations
-    - corrupted key state triggers a predictable failure path, preventing
-      undefined behavior in cryptographic routines
-    - the pipeline halts early and produces a stable `HMAC_FAIL` response,
-      reflecting the inability to validate message authenticity
-    - audit logging records the failure as the final event, preserving
-      append‑only semantics and enabling forensic traceability
-    - the gateway maintains operational safety and observability even when
-      critical cryptographic persistence layers are damaged
+    @scope
+        - early detection of invalid keys.json content
+        - deterministic halting of the pipeline with `HMAC_FAIL`
+        - strict separation between key validation and downstream logic
+        - append-only audit logging of corruption events
+        - predictable behavior required for industrial and embedded systems
 
-    These checks reinforce the architectural requirement that key integrity
-    must be validated before any cryptographic or freshness logic executes,
-    ensuring secure and deterministic behavior in long‑running or
-    safety‑critical deployments.
+    @ensures
+        The gateway responds deterministically to invalid cryptographic persistence
+        layers, preserving safety and forensic-grade observability.
     """
 
     @pytest.mark.asyncio
     async def test_key_file_corruption(self, integration_config_factory):
         """
-        Key file corruption:
-        - keys.json contains invalid JSON
-        - must produce GATEWAY_ERROR
+        @resume
+            Validates gateway behavior when keys.json contains invalid JSON.
+
+        @scope
+            - corrupted keys.json detection
+            - deterministic `HMAC_FAIL` response
+            - correct audit logging of failure event
+
+        @returns
+            A GatewayResponse with status="error" and reason="HMAC_FAIL".
+
+        @ensures
+            The gateway halts processing immediately upon key corruption and
+            records the failure as the final append-only audit event.
         """
 
+        # --- Arrange ---
         config = integration_config_factory()
         gateway = GatewayAsync(config)
 
         keys_path = Path(config["crypto"]["keys_file"])
         keys_path.write_text("{invalid_json")
 
+        # Minimal message (HMAC irrelevant due to early failure)
         payload = {"id": 1, "counter": 1, "msg": "x", "hmac": "00"}
 
+        # --- Act ---
         r = await gateway.process(payload)
+
+        # --- Assert ---
         assert r.status == "error"
         assert r.reason == "HMAC_FAIL"
 
         audit_path = Path(config["audit"]["path"])
-        assert json.loads(audit_path.read_text().splitlines()[-1])["event"] == "HMAC_FAIL"
+        last_event = json.loads(audit_path.read_text().splitlines()[-1])
+        assert last_event["event"] == "HMAC_FAIL"

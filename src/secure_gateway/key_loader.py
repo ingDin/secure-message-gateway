@@ -1,12 +1,14 @@
 """
-Async key file loader for the secure gateway.
+@summary
+Asynchronous loader and writer for key‑related JSON files used by the
+secure‑message‑gateway. This module is intentionally specialized and handles
+ONLY the following files:
 
-This module handles ONLY key-related JSON files:
 - keys.json
 - keys_archive.json
 
-It provides:
-- KeyFileStore (class with async load/write operations)
+It provides deterministic loading and storage of key material and raises
+`HMACError` for any failure to ensure predictable and auditable behavior.
 """
 
 import json
@@ -19,17 +21,40 @@ from secure_gateway.exceptions import HMACError
 
 class KeyFileStore:
     """
-    Async loader/writer for key-related JSON files.
-    This class is intentionally NOT a generic JSON loader.
-    It is specialized for:
+    @summary
+    Async loader/writer for key‑related JSON files. This class is NOT a generic
+    JSON loader — it is strictly dedicated to key storage files used by the
+    gateway.
+
+    Supported files:
     - keys.json
     - keys_archive.json
+
+    @examples
+    >>> keys = await KeyFileStore.load_async(Path("keys.json"))
+    >>> await KeyFileStore.write_async(Path("keys_archive.json"), keys)
     """
 
     @staticmethod
     async def load_async(path: Path) -> Dict[str, Any]:
         """
-        Load and parse keys.json or keys_archive.json asynchronously.
+        @summary
+        Asynchronously load and parse a key JSON file.
+
+        @parameters
+        path : Path
+            Path to the JSON file (keys.json or keys_archive.json).
+
+        @returns
+        dict
+            Parsed JSON content containing key material.
+
+        @raises
+        HMACError
+            If the file cannot be opened, read, or parsed.
+
+        @examples
+        >>> keys = await KeyFileStore.load_async(Path("keys.json"))
         """
         try:
             async with aiofiles.open(path, "r", encoding="utf-8") as f:
@@ -41,7 +66,24 @@ class KeyFileStore:
     @staticmethod
     async def write_async(path: Path, content: Dict[str, Any]) -> None:
         """
-        Write keys.json or keys_archive.json asynchronously.
+        @summary
+        Asynchronously write key material to a JSON file.
+
+        @parameters
+        path : Path
+            Path to the JSON file to write.
+        content : dict
+            Key material to persist.
+
+        @returns
+        None
+
+        @raises
+        HMACError
+            If the file cannot be written.
+
+        @examples
+        >>> await KeyFileStore.write_async(Path("keys_archive.json"), {"prod_key": "abcd"})
         """
         try:
             async with aiofiles.open(path, "w", encoding="utf-8") as f:

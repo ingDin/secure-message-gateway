@@ -1,22 +1,23 @@
 """
-Enterprise-level shared pytest fixtures for constructing fully initialized
+Shared pytest fixtures for constructing fully initialized
 integration configurations used throughout the secure-message-gateway test suite.
 
-This module provides deterministic, reproducible helpers that assemble complete
-gateway configurations backed by temporary filesystem state. It ensures:
+@resume
+    Provides deterministic, reproducible helpers that assemble complete gateway
+    configurations backed by temporary filesystem state.
 
-- consistent creation of all persistence-layer artifacts required by integration
-  tests (keys.json, keys_archive.json, freshness.json, audit.log, gateway.log)
-- isolated and reproducible filesystem behavior via pytest’s tmp_path fixture
-- stable initialization semantics for cryptographic, freshness, logging, and
-  audit subsystems
-- simplified test authoring by centralizing integration configuration setup
+@scope
+    - consistent creation of all persistence-layer artifacts required by integration tests
+      (keys.json, keys_archive.json, freshness.json, audit.log, gateway.log)
+    - isolated and reproducible filesystem behavior via pytest’s tmp_path fixture
+    - stable initialization semantics for cryptographic, freshness, logging, and audit subsystems
+    - simplified test authoring through centralized integration configuration setup
 
-These fixtures form foundational infrastructure for the gateway’s integration
-tests, enabling predictable, maintainable, and security‑focused test environments
-across all pipeline layers.
+@ensures
+    These fixtures form foundational infrastructure for the gateway’s integration tests,
+    enabling predictable, maintainable, and security‑focused test environments across
+    all pipeline layers.
 """
-
 
 import json
 import pytest
@@ -26,21 +27,29 @@ from pathlib import Path
 @pytest.fixture
 def integration_config_factory(tmp_path, config_factory):
     """
-    Factory fixture producing fully initialized integration configurations with
-    deterministic filesystem scaffolding.
+    @resume
+        Factory fixture producing fully initialized integration configurations with
+        deterministic filesystem scaffolding.
 
-    This helper ensures:
-    - creation of all required persistence files (keys.json, keys_archive.json,
-      freshness.json, audit.log, gateway.log)
-    - stable initialization of cryptographic, freshness, logging, and audit
-      configuration blocks
-    - reproducible test environments independent of host system state
-    - seamless integration with config_factory for safe override merging
+    @scope
+        - creation of all required persistence files:
+            * keys.json
+            * keys_archive.json
+            * freshness.json
+            * audit.log
+            * gateway.log
+        - stable initialization of cryptographic, freshness, logging, and audit blocks
+        - reproducible test environments independent of host system state
+        - seamless integration with config_factory for safe override merging
 
-    Returns:
+    @returns
         Callable[[], dict]:
             A factory function that constructs and returns a complete integration
             configuration dictionary suitable for end-to-end gateway testing.
+
+    @ensures
+        Integration tests can rely on deterministic, fully initialized configuration
+        scaffolding without duplicating boilerplate setup logic.
     """
     def _factory():
         # Paths

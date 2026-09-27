@@ -1,12 +1,17 @@
 """
-Asynchronous monotonic counter management for replay protection.
+@summary
+Asynchronous freshness enforcement for the secure-message-gateway.
+Manages the monotonic counter used for replay protection and applies all
+freshness rules defined in `config.json`.
 
-Implements ALL freshness rules from config.json:
-- monotonic counter
-- min_increment
-- max_increment
-- max_drift
-- reject_out_of_range
+Enforced rules:
+- monotonic progression
+- minimum increment
+- maximum increment
+- drift constraints
+- optional rejection of out-of-range increments
+
+All failures raise `FreshnessError` for deterministic and auditable behavior.
 """
 
 import json
@@ -18,12 +23,19 @@ from secure_gateway.exceptions import FreshnessError
 
 class FreshnessManager:
     """
-    Manages a monotonic counter stored in freshness.json.
+    @summary
+    Provides asynchronous loading, validation, and updating of the gateway's
+    monotonic counter stored in `freshness.json`.
 
-    Responsibilities:
-    - async load of the counter
-    - async store of updated counter
-    - full freshness validation based on config.json
+    @parameters
+    counter_path : Path
+        Filesystem path to the freshness state file.
+    config : dict
+        Parsed gateway configuration containing the `freshness` section.
+
+    @examples
+    >>> fm = FreshnessManager(Path("freshness.json"), config)
+    >>> await fm.validate_and_update_async(42)
     """
 
     def __init__(self, counter_path: Path, config: dict) -> None:
@@ -31,6 +43,22 @@ class FreshnessManager:
         self.cfg = config["freshness"]
 
     async def load_async(self) -> int:
+        """
+        @summary
+        Load the persisted monotonic counter from `freshness.json`.
+
+        @returns
+        int
+            The last stored counter value.
+
+        @raises
+        FreshnessError
+            If the file is missing, unreadable, corrupted, or contains an
+            invalid counter value.
+
+        @examples
+        >>> last = await fm.load_async()
+        """
         try:
             async with aiofiles.open(self.counter_path, "r", encoding="utf-8") as f:
                 raw = await f.read()
@@ -47,10 +75,41 @@ class FreshnessManager:
             raise FreshnessError("Invalid 'counter' value in freshness.json") from exc
 
     async def store_async(self, value: int) -> None:
+        """
+        @summary
+        Persist the updated counter value to `freshness.json`.
+
+        @parameters
+        value : int
+            The new monotonic counter value.
+
+        @examples
+        >>> await fm.store_async(100)
+        """
         async with aiofiles.open(self.counter_path, "w", encoding="utf-8") as f:
             await f.write(json.dumps({"counter": value}))
 
     async def validate_and_update_async(self, incoming: int) -> None:
+        """
+        @summary
+        Validate the incoming counter against all freshness rules and update
+        the persisted state if validation succeeds.
+
+        @parameters
+        incoming : int
+            The counter value extracted from the incoming message.
+
+        @raises
+        FreshnessError
+            If any freshness rule is violated:
+            - replay detection (incoming < last)
+            - increment too small
+            - increment too large (optional rejection)
+            - drift violation
+
+        @examples
+        >>> await fm.validate_and_update_async(42)
+        """
         last = await self.load_async()
         increment = incoming - last
 

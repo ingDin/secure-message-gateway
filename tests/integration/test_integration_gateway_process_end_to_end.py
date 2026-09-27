@@ -1,21 +1,60 @@
 """
-Integration test suite validating the full end-to-end
-message-processing pipeline of the secure-message-gateway in scenarios where
-key rotation is disabled.
+Integration test suite validating the full end-to-end message‑processing pipeline
+of the secure-message-gateway in scenarios where key rotation is disabled.
 
-This module ensures that the gateway behaves deterministically across all
-pipeline stages when operating with a static cryptographic key. It verifies:
+@resume
+    Ensures deterministic gateway behavior across all pipeline stages when
+    operating with a static cryptographic key, validating baseline operational
+    guarantees for environments where rotation is deferred or not required.
 
-- strict schema validation before any cryptographic or freshness logic
-- deterministic key loading from persistent storage
-- successful HMAC verification for authentic messages
-- correct monotonic freshness counter updates and reliable persistence
-- append-only audit logging that records a single acceptance event
-- stable, reproducible GatewayResponse objects reflecting correct pipeline flow
+@scope
+    - strict schema validation before cryptographic or freshness logic
+    - deterministic key loading from persistent storage
+    - successful HMAC verification for authentic messages
+    - correct monotonic freshness counter updates and reliable persistence
+    - append-only audit logging of acceptance events
+    - stable, reproducible GatewayResponse objects
 
-These guarantees validate the baseline operational behavior of the gateway,
-ensuring predictable processing, state consistency, and forensic-grade
-observability in environments where rotation is not required or is deferred.
+@ensures
+    The gateway maintains predictable processing, state consistency, and
+    forensic-grade observability under non-rotation conditions.
+"""
+
+import pytest
+import os
+import json
+from pathlib import Path
+
+from secure_gateway.gateway import GatewayAsync
+from secure_gateway.hmac import HMACAlgorithm
+
+
+VALID_KEY = os.urandom(32).hex()
+MSG_ID = 1
+MSG_COUNTER = 1
+MSG_TEXT = "hello"
+
+
+"""
+Integration test suite validating the full end-to-end message‑processing pipeline
+of the secure-message-gateway in scenarios where key rotation is disabled.
+
+@resume
+    Ensures deterministic gateway behavior across all pipeline stages when
+    operating with a static cryptographic key, validating baseline operational
+    guarantees for environments where rotation is deferred or not required.
+
+@scope
+    - strict schema validation before cryptographic or freshness logic
+    - deterministic key loading from persistent storage
+    - successful HMAC verification for authentic messages
+    - correct monotonic freshness counter updates and reliable persistence
+    - append-only audit logging of acceptance events
+    - stable, reproducible GatewayResponse objects
+
+@ensures
+    The gateway maintains predictable processing, state consistency, and
+    forensic-grade observability under non-rotation conditions.
 """
 
 import pytest
@@ -35,40 +74,44 @@ MSG_TEXT = "hello"
 
 class TestGatewayPipelineNoRotation:
     """
-    Integration test suite validating the full end‑to‑end message‑processing
-    pipeline in a non‑rotation scenario.
+    @resume
+        Integration test suite validating the full end‑to‑end message‑processing
+        pipeline in a non‑rotation scenario.
 
-    This class ensures that:
-    - schema validation correctly enforces structural integrity before any
-      cryptographic or freshness logic is executed
-    - key loading retrieves the active key deterministically from persistent
-      storage
-    - HMAC verification succeeds for valid messages, confirming payload
-      authenticity and integrity
-    - freshness management updates the monotonic counter state and persists it
-      reliably, guaranteeing replay protection
-    - audit logging records a single, well‑structured event documenting the
-      acceptance of the message, preserving append‑only semantics
-    - the gateway produces a stable, predictable `GatewayResponse` object,
-      reflecting correct pipeline execution without rotation
+    @scope
+        - schema validation enforces structural integrity
+        - deterministic key loading from persistent storage
+        - HMAC verification confirms authenticity and integrity
+        - freshness subsystem updates monotonic counter state reliably
+        - audit subsystem records a single acceptance event
+        - GatewayResponse object remains stable and predictable
 
-    These checks validate the baseline operational behavior of the gateway,
-    ensuring deterministic processing, state consistency, and forensic‑grade
-    observability in environments where key rotation is disabled or deferred.
+    @ensures
+        The gateway behaves deterministically and safely when rotation is disabled
+        or deferred, preserving operational guarantees and forensic traceability.
     """
 
     @pytest.mark.asyncio
     async def test_gateway_integration(self, integration_config_factory):
         """
-        Full pipeline test (rotation disabled):
-        - schema validation
-        - key loading
-        - HMAC verification
-        - freshness update
-        - audit logging
-        - structured response
-        """
+        @resume
+            Validates the full gateway pipeline under static-key conditions.
 
+        @scope
+            - schema validation
+            - key loading
+            - HMAC verification
+            - freshness update
+            - audit logging
+            - structured GatewayResponse
+
+        @returns
+            A GatewayResponse with status="ok" and correct freshness/audit state.
+
+        @ensures
+            The gateway processes valid messages deterministically and updates
+            freshness and audit subsystems exactly once.
+        """
         # --- Arrange ---
         config = integration_config_factory()
 
@@ -80,7 +123,6 @@ class TestGatewayPipelineNoRotation:
 
         payload = {"id": MSG_ID, "counter": MSG_COUNTER, "msg": MSG_TEXT}
         mac = algo.sign(payload, bytes.fromhex(VALID_KEY))
-
         msg = {**payload, "hmac": mac}
 
         # --- Act ---

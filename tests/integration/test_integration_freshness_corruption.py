@@ -1,23 +1,23 @@
 """
-Integration test suite validating deterministic replay‑protection
-behavior within the secure-message-gateway pipeline.
+Integration test suite validating deterministic replay‑protection behavior
+within the secure-message-gateway pipeline.
 
-This module ensures that the gateway:
+@resume
+    Ensures that the gateway enforces strict monotonic counter progression,
+    rejecting replay attempts deterministically and preserving state integrity
+    across safety‑critical and distributed deployments.
 
-- accepts an initial message whose counter advances freshness state and whose
-  HMAC signature is valid
-- rejects subsequent messages with identical counter values, enforcing strict
-  monotonic progression rules
-- produces a stable, reproducible `FRESHNESS_FAIL` response for replay attempts
-- halts pipeline execution immediately upon freshness violation, preventing
-  downstream components from overriding fail-fast semantics
-- records both acceptance and rejection events in strict append-only order,
-  preserving forensic-grade traceability and deterministic observability
+@scope
+    - acceptance of initial messages whose counters advance freshness state
+    - deterministic rejection of repeated messages with identical counters
+    - stable `FRESHNESS_FAIL` signaling for replay attempts
+    - fail-fast semantics preventing downstream pipeline execution
+    - append-only audit logging of acceptance and rejection events
 
-These guarantees validate the robustness of the freshness subsystem and ensure
-that message ordering remains intact even under adversarial or repetitive input
-conditions, a critical requirement for distributed, safety-critical, and
-stateful deployments.
+@ensures
+    The freshness subsystem behaves predictably under adversarial or repetitive
+    input conditions, maintaining ordering guarantees and preventing replay‑adjacent
+    attacks.
 """
 
 import pytest
@@ -30,36 +30,46 @@ from secure_gateway.hmac import HMACAlgorithm
 
 class TestReplayDetection:
     """
-    Integration test suite validating the gateway’s replay‑protection guarantees
-    and deterministic handling of repeated messages.
+    @resume
+        Integration test suite validating the gateway’s replay‑protection guarantees
+        and deterministic handling of repeated messages.
 
-    This class ensures that:
-    - the gateway correctly accepts an initial message whose counter advances
-      freshness state and whose HMAC signature is valid
-    - subsequent messages with identical counter values are rejected
-      deterministically, enforcing strict monotonic progression rules
-    - replay attempts trigger a fail‑fast `FRESHNESS_FAIL` response, preventing
-      message duplication, state rollback, or replay‑adjacent attacks
-    - audit logging captures both acceptance and rejection events in strict
-      pipeline order, preserving append‑only semantics and forensic traceability
-    - the gateway maintains stable behavior across repeated invocations, a
-      requirement for distributed, safety‑critical, and stateful deployments
-      where replay protection is foundational
+    @scope
+        - correct acceptance of initial monotonic messages
+        - deterministic rejection of identical counter values
+        - fail-fast freshness violation semantics
+        - append-only audit logging of MESSAGE_ACCEPTED and FRESHNESS_FAIL
+        - predictable behavior required for distributed, stateful, and safety‑critical
+          deployments
 
-    These checks validate the correctness and robustness of the freshness
-    subsystem, ensuring that message ordering guarantees remain intact even
-    under adversarial or repetitive input conditions.
+    @ensures
+        The freshness subsystem enforces strict monotonic progression rules, preserving
+        ordering guarantees and preventing replay‑adjacent attacks.
     """
 
     @pytest.mark.asyncio
     async def test_replay_detection(self, integration_config_factory):
         """
-        Replay detection:
-        - first message accepted
-        - second message with same counter rejected
-        - audit logs MESSAGE_ACCEPTED + FRESHNESS_FAIL
+        @resume
+            Validates replay detection behavior for two sequential messages with
+            identical counters.
+
+        @scope
+            - first message accepted (counter advances freshness state)
+            - second message rejected deterministically (same counter)
+            - audit log contains MESSAGE_ACCEPTED followed by FRESHNESS_FAIL
+
+        @returns
+            Two GatewayResponse objects:
+                * first: status="ok"
+                * second: status="error", reason="FRESHNESS_FAIL"
+
+        @ensures
+            The gateway halts processing immediately upon replay detection and
+            records acceptance and rejection events in strict append-only order.
         """
 
+        # --- Arrange ---
         config = integration_config_factory()
         gateway = GatewayAsync(config)
         algo = HMACAlgorithm()
@@ -72,12 +82,12 @@ class TestReplayDetection:
         mac = algo.sign(payload, key)
         msg = {**payload, "hmac": mac}
 
-        # First message accepted
+        # --- Act ---
         r1 = await gateway.process(msg)
-        assert r1.status == "ok"
-
-        # Replay rejected
         r2 = await gateway.process(msg)
+
+        # --- Assert ---
+        assert r1.status == "ok"
         assert r2.status == "error"
         assert r2.reason == "FRESHNESS_FAIL"
 

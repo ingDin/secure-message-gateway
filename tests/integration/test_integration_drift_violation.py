@@ -1,24 +1,23 @@
 """
-Integration test suite validating enforcement of monotonic
-counter drift constraints within the secure-message-gateway pipeline.
+Integration test suite validating enforcement of monotonic counter drift
+constraints within the secure-message-gateway pipeline.
 
-This module ensures that the gateway correctly detects and rejects messages
-whose counters exceed configured drift thresholds, preventing:
+@resume
+    Ensures that the gateway correctly detects and rejects messages whose
+    counters exceed configured drift thresholds, enforcing strict freshness
+    guarantees required for replay protection and state consistency.
 
-- replay-adjacent attacks
-- out-of-order message injection
-- state desynchronization across distributed or safety-critical deployments
-- bypassing freshness guarantees through excessive counter jumps
+@scope
+    - detection of excessive counter jumps
+    - deterministic `FRESHNESS_FAIL` response for drift violations
+    - fail-fast semantics preventing downstream pipeline execution
+    - append-only audit logging of drift failures
+    - predictable behavior required for distributed and safety-critical systems
 
-It verifies that:
-- freshness validation halts the pipeline deterministically
-- cryptographic and schema validation do not override drift violations
-- audit logging records the failure as the final append-only event
-- the gateway produces a stable, reproducible `FRESHNESS_FAIL` response
-
-These guarantees reinforce the architectural contract that counter drift must
-be tightly controlled to maintain system integrity, observability, and
-security in industrial-grade message-processing environments.
+@ensures
+    Counter drift remains tightly controlled, preserving system integrity,
+    observability, and security in industrial-grade message-processing
+    environments.
 """
 
 import pytest
@@ -31,53 +30,69 @@ from secure_gateway.hmac import HMACAlgorithm
 
 class TestDriftViolation:
     """
-    Integration test suite validating enforcement of monotonic counter drift
-    constraints within the freshness subsystem.
+    @resume
+        Integration test suite validating enforcement of monotonic counter drift
+        constraints within the freshness subsystem.
 
-    This class ensures that:
-    - the gateway correctly identifies counter values that exceed configured
-      drift thresholds (e.g., excessively large jumps between consecutive
-      messages)
-    - freshness validation halts the pipeline early and produces a deterministic
-      `FRESHNESS_FAIL` response
-    - cryptographic verification and schema validation do not override or
-      suppress freshness violations
-    - audit logging records the failure as the final event, preserving strict
-      observability guarantees and append-only semantics
+    @scope
+        - identification of counter values exceeding configured drift thresholds
+        - deterministic halting of the pipeline with `FRESHNESS_FAIL`
+        - strict separation between freshness validation and cryptographic logic
+        - append-only audit logging of drift violations
+        - predictable behavior required for distributed and safety-critical deployments
 
-    These checks are essential for preventing replay‑adjacent attacks,
-    out-of-order message injection, and state desynchronization in
-    safety‑critical or distributed environments where counter drift must be
-    tightly controlled.
+    @ensures
+        The gateway responds deterministically to drift violations, preventing
+        replay-adjacent attacks, ordering violations, and state desynchronization.
     """
 
     @pytest.mark.asyncio
     async def test_drift_violation(self, integration_config_factory):
         """
-        Drift violation:
-        - freshness.json starts at counter=1
-        - message counter jumps too far (9999)
-        - must produce FRESHNESS_FAIL
+        @resume
+            Validates gateway behavior when incoming counter exceeds configured
+            drift thresholds.
+
+        @scope
+            - freshness.json counter = 1
+            - incoming message counter = 9999 (excessive drift)
+            - deterministic `FRESHNESS_FAIL` response
+            - correct audit logging of failure event
+
+        @returns
+            A GatewayResponse with status="error" and reason="FRESHNESS_FAIL".
+
+        @ensures
+            The gateway halts processing immediately upon drift violation and
+            records the failure as the final append-only audit event.
         """
 
+        # --- Arrange ---
         config = integration_config_factory()
         gateway = GatewayAsync(config)
         algo = HMACAlgorithm()
 
+        # Valid key material
         keys_path = Path(config["crypto"]["keys_file"])
         keys_path.write_text(json.dumps({"dev_key": "22" * 32}))
         key = bytes.fromhex("22" * 32)
 
+        # Freshness baseline
         freshness_path = Path(config["freshness"]["counter_file"])
         freshness_path.write_text(json.dumps({"counter": 1}))
 
+        # Message with excessive drift
         payload = {"id": 1, "counter": 9999, "msg": "drift"}
         mac = algo.sign(payload, key)
         msg = {**payload, "hmac": mac}
 
+        # --- Act ---
         r = await gateway.process(msg)
+
+        # --- Assert ---
         assert r.status == "error"
         assert r.reason == "FRESHNESS_FAIL"
 
         audit_path = Path(config["audit"]["path"])
-        assert json.loads(audit_path.read_text().splitlines()[-1])["event"] == "FRESHNESS_FAIL"
+        last_event = json.loads(audit_path.read_text().splitlines()[-1])
+        assert last_event["event"] == "FRESHNESS_FAIL"
