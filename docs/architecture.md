@@ -1,152 +1,147 @@
-# Architecture Overview
+# Architecture Overview — secure-message-gateway
 
-The architecture of `secure-message-gateway` is defined by a combined
-Top‑Down (system‑level) and Bottom‑Up (component‑level) design.  
-This document describes the structural organization, execution pipeline,
-module responsibilities, and deterministic behavior of the gateway.
-
----
-
-## 1. System-Level Architecture (Top‑Down)
-
-At the system level, the gateway enforces a deterministic validation pipeline
-designed for embedded and safety‑critical environments. The pipeline consists of
-four major functional domains:
-
-1. **Structural Validation**  
-   Ensures message correctness using strict schema rules.
-
-2. **Cryptographic Verification**  
-   Applies deterministic HMAC-SHA256 signing and constant‑time verification.
-
-3. **Freshness Enforcement**  
-   Validates monotonic counters, increment rules, and drift constraints.
-
-4. **Audit & Observability**  
-   Records all events using structured JSON Lines logging.
-
-These domains form a fixed execution sequence:
-
-validation → crypto → freshness → logging → response
-
-
-The system-level design guarantees:
-
-- deterministic behavior  
-- reproducible test vectors  
-- predictable error taxonomy  
-- extensibility for REST API, monitoring dashboards, and alternative crypto backends  
+The `secure-message-gateway` implements a deterministic, asynchronous
+security pipeline designed for embedded and industrial environments.
+This document describes the system-level architecture only, without
+module-level details (see `components.md` for those).
 
 ---
 
-## 2. Component-Level Architecture (Bottom‑Up)
+## 1. System-Level Architecture
 
-The Bottom‑Up design defines the concrete modules that implement each stage of
-the pipeline. Each module is isolated, testable, and replaceable.
+The gateway enforces a strict linear pipeline:
 
-### Core Modules
+validation → crypto → freshness → audit → response
 
-- **crypto.py**  
-  Implements HMAC-SHA256 signing and verification.  
-  Provides deterministic signing via sorted JSON payloads.
-
-- **freshness.py**  
-  Enforces monotonic counters, increment rules, drift limits, and replay
-  protection.  
-  Persists freshness state using async I/O.
-
-- **logger.py**  
-  Writes structured JSON Lines audit entries.  
-  Ensures non-blocking logging and strict serializability.
-
-- **gateway.py**  
-  Orchestrates the full pipeline.  
-  Defines deterministic stage ordering and async execution model.
-
-### Supporting Modules
-
-- **key_manager.py**  
-  Handles interval-based key rotation and archival.
-
-- **key_loader.py**  
-  Provides async JSON loading/writing for key files.
-
-- **schema.py**  
-  Implements strict JSON Schema validation.
-
-- **exceptions.py**  
-  Defines deterministic error taxonomy.
-
-- **models.py**  
-  Provides standardized DTOs for pipeline output.
+Core architectural properties:
+- deterministic ordering of all operations  
+- isolation between functional domains  
+- reproducible behavior across environments  
+- predictable error signaling  
+- async I/O for all stateful subsystems  
 
 ---
 
-## 3. Architectural Snapshot
+## 2. Functional Domains
 
-<div align="center">
-  <img src="assets/secure_gateway_image.png" width="340">
-</div>
+The architecture is organized into five independent domains:
 
-The snapshot illustrates the separation between:
+1. **Validation Layer**  
+   Ensures structural correctness before any security operation.
 
-- validation layer  
-- cryptographic layer  
-- freshness subsystem  
-- audit subsystem  
-- orchestration layer  
+2. **Cryptographic Layer**  
+   Performs deterministic HMAC verification using sorted JSON payloads.
 
-Each layer is independent and communicates through deterministic interfaces.
+3. **Freshness Layer**  
+   Enforces monotonic counters, increment rules, drift limits, and replay protection.
+
+4. **Audit Layer**  
+   Records structured JSON-lines events for observability and traceability.
+
+5. **Orchestration Layer**  
+   Coordinates all subsystems under a unified asynchronous execution model.
+
+Each domain is isolated and communicates through stable, deterministic interfaces.
 
 ---
+
+## 3. Architecture Diagram
+
+```mermaid
+
+classDiagram
+    direction LR
+
+    %% Packages (simulare UML)
+    class GatewayAsync {
+        +process(raw)
+        -_check_key_rotation()
+    }
+
+    class SchemaValidator {
+        +validate(message)
+    }
+
+    class AlgorithmRegistry {
+        +get(name)
+    }
+
+    class HMACAlgorithm {
+        +load_key_async(config)
+        +verify_async(payload, key, hmac)
+    }
+
+    class FreshnessManager {
+        +validate_and_update_async(counter)
+    }
+
+    class AuditLogger {
+        +log_event(type, payload)
+    }
+
+    class KeyManager {
+        +rotate_async()
+        +rotation_needed(config, last_rotation)
+    }
+
+    class GatewayResponse {
+        +status
+        +reason
+    }
+
+    %% Relationships (UML style)
+    GatewayAsync --> SchemaValidator : uses
+    GatewayAsync --> AlgorithmRegistry : selects algorithm
+    GatewayAsync --> HMACAlgorithm : verifies HMAC
+    GatewayAsync --> FreshnessManager : enforces counter
+    GatewayAsync --> AuditLogger : logs events
+    GatewayAsync --> KeyManager : rotates keys
+    GatewayAsync --> GatewayResponse : returns
+
+
+
+```
 
 ## 4. Execution Model
 
-The gateway operates under an asynchronous execution model:
+The gateway operates under a fully asynchronous execution model:
 
-- key loading → async I/O  
-- audit logging → async I/O  
-- freshness persistence → async I/O  
-- crypto operations → sync or executor offload  
+- key loading → async file I/O  
+- freshness persistence → async file I/O  
+- audit logging → async file I/O  
+- crypto operations → synchronous or executor-offloaded  
 
-This ensures high throughput and non-blocking behavior in embedded or
-industrial deployments.
-
----
+This ensures non-blocking behavior and predictable latency.
 
 ## 5. Determinism Guarantees
 
-The architecture enforces determinism through:
+Determinism is enforced through:
 
 - sorted JSON payloads for signing  
 - constant-time HMAC verification  
-- stable error codes  
-- strict schema enforcement  
 - atomic freshness updates  
+- strict schema enforcement  
+- stable error codes  
 - structured audit events  
 
-No component introduces nondeterministic behavior.
+No subsystem introduces nondeterministic behavior.
 
----
+## 6. Extensibility Model
 
-## 6. Extensibility
+The architecture supports controlled extension:
 
-The architecture supports:
-
-- alternative crypto algorithms (via AlgorithmRegistry)  
-- custom key rotation policies  
+- new crypto algorithms via registry  
+- custom rotation policies  
 - extended freshness rules  
-- alternative audit backends (file → syslog → Kafka)  
-- schema extensions for new message types  
+- alternative audit backends  
+- schema evolution for new message types  
 
-All extensions preserve pipeline determinism.
-
----
+All extensions must preserve deterministic behavior.
 
 ## 7. Summary
 
-This architecture defines a deterministic, modular, and auditable message
-gateway suitable for embedded, industrial, and safety‑critical systems. 
+The gateway architecture provides a deterministic, auditable, and modular
+security pipeline suitable for embedded, industrial, and safety-critical systems.
+It defines clear functional domains, a fixed execution sequence, and strict
+isolation between components, ensuring predictable and reproducible behavior.
 
-The combined Top‑Down and Bottom‑Up design ensures both conceptual clarity and
-low-level control over each stage of the validation pipeline.
