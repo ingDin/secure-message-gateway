@@ -1,5 +1,4 @@
-# Architecture Overview — secure-message-gateway
-
+# Architecture Overview
 The `secure-message-gateway` implements a deterministic, asynchronous
 security pipeline designed for embedded and industrial environments.
 This document describes the system-level architecture only, without
@@ -140,8 +139,7 @@ All extensions must preserve deterministic behavior.
 
 ## 7. Summary
 
-The gateway architecture provides a deterministic, auditable, and modular
-security pipeline suitable for embedded, industrial, and safety-critical systems.
-It defines clear functional domains, a fixed execution sequence, and strict
-isolation between components, ensuring predictable and reproducible behavior.
-
+The gateway architecture provides a **deterministic**, **auditable**, and **modular**
+security pipeline suitable for **embedded**, **industrial**, and **safety-critical systems**.
+It defines **clear functional domains**, a **fixed execution sequence**, and **strict isolation**
+between components, ensuring **predictable** and **reproducible behavior**.

@@ -1,5 +1,4 @@
 # Component Architecture — secure-message-gateway
-
 This document describes the internal components of `secure-message-gateway`,
 their responsibilities, interfaces, and interactions. It complements the
 high-level architecture by detailing the module-level design.
@@ -263,6 +262,6 @@ All extensions preserve pipeline determinism.
 ## 6. Summary
 
 This document defines the component-level architecture of `secure-message-gateway`,
-detailing module responsibilities, interfaces, and interactions. The design is
-modular, deterministic, and suitable for embedded, industrial, and safety-critical
-deployments.
+detailing **module responsibilities**, **interfaces**, and **interactions**. The design is
+**modular**, **deterministic**, and suitable for **embedded**, **industrial**, and
+**safety-critical deployments**.
