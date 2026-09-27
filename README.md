@@ -1,27 +1,26 @@
+
+
+```md
+                                   ╔════════════════════════════════════╗
+                                   ║      SMG-CORE: CRYPTO FABRIC       ║
+                                   ╠════════════════════════════════════╣
+                                   ║  • SCHEMA VALIDATION UNIT          ║
+                                   ║  • KEY ROTATION CONTROLLER         ║
+                                   ║  • HMAC-SHA256 COMPUTE ENGINE      ║
+                                   ║  • MONOTONIC COUNTER (ANTI-REPLAY) ║
+                                   ║  • AUDIT TRACE OUTPUT              ║
+                                   ╚════════════════════════════════════╝
+
+                               ⇣ VERIFIED • INTEGRITY-PROTECTED • REPLAY-SAFE ⇣
+
+                                    SECURE MESSAGE GATEWAY — SMG‑CORE v1
+                           Deterministic Crypto • Monotonic Counter • Full Audit Trail
+```
 <div align="center">
-
-<!-- ASCII BANNER -->
-<pre>
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║                 SECURE MESSAGE GATEWAY                       ║
-║                                                              ║
-║      Deterministic • HMAC Integrity • Anti‑Replay • Audit    ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-</pre>
-
-<!-- TAGLINE MINIMALIST -->
-### A clean, asynchronous, cryptographically‑verified message pipeline  
-### for embedded, industrial, and safety‑critical systems.
-
-<br>
 
 <!-- BADGES CENTERED -->
 ![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)
 ![Asyncio](https://img.shields.io/badge/Asyncio-Ready-green.svg)
-
-
 ![Security](https://img.shields.io/badge/Security-HMAC%20%2B%20Freshness-critical.svg)
 ![Coverage](https://img.shields.io/badge/pytest-Full%20Coverage-brightgreen.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-Clean%20Design-blue.svg)
