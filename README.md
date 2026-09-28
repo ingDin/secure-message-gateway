@@ -62,36 +62,24 @@ Built for **embedded**, **industrial**, **IoT**, **robotics**, and **secure mess
 # 🚀 Overview
 
 `secure-message-gateway` is an asynchronous, deterministic message‑validation pipeline
-designed for embedded, industrial, IoT, and robotics systems that require strict
-integrity, anti‑replay protection, and full auditability.
+designed for embedded, industrial, IoT, and robotics systems requiring strict
+integrity guarantees, anti‑replay protection, and full auditability.
 
-Core components:
-- GatewayAsync — orchestrates the full validation pipeline
-- SchemaValidator — strict JSON Schema enforcement
-- AlgorithmRegistry + HMACAlgorithm — pluggable cryptographic backend
-- KeyManager + KeyFileStore — enterprise key rotation & archival
-- FreshnessManager — monotonic counter & anti‑replay rules
-- AuditLogger — structured JSON Lines audit logging
-- GatewayResponse — standardized output DTO
-- Exceptions — deterministic error taxonomy
+The gateway processes each message through a 7‑stage security pipeline:
 
-The entire pipeline is asynchronous and non‑blocking.
+1. Schema Validation  
+2. Key Rotation Check  
+3. Key Loading  
+4. HMAC Verification  
+5. Freshness Validation  
+6. Audit Logging  
+7. Structured Response  
 
----
+Core components include: SchemaValidator, AlgorithmRegistry, HMACAlgorithm,
+KeyManager, KeyFileStore, FreshnessManager, AuditLogger, and GatewayResponse.
 
-# 🧱 Architecture Overview
-
-The gateway processes every incoming message through a deterministic 7‑step pipeline:
-
-1. **Schema Validation**  
-2. **Key Rotation Check**  
-3. **Key Loading**  
-4. **HMAC Verification**  
-5. **Freshness Validation**  
-6. **Audit Logging**  
-7. **Structured Response**
-
-Each component is modular, testable, and cryptographically agnostic.
+All subsystems are modular, testable, cryptographically agnostic, and fully
+asynchronous.
 
 ---
 

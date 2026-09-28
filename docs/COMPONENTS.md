@@ -5,25 +5,18 @@ high-level architecture by detailing the module-level design.
 
 ---
 
-## 1. Module Map — secure-message-gateway
+## 1. Component Overview
 
-Gateway-ul este format din module independente, fiecare cu responsabilitate unică.
-Structura reflectă pipeline-ul determinist:
+Each component in the gateway contributes a distinct capability to the overall system.
+Rather than duplicating responsibilities, modules cooperate through stable interfaces
+that define how data moves through the pipeline.
 
-    [ schema ] → [ key_manager ] → [ crypto ] → [ freshness ] → [ logger ] → [ gateway ]
+The architecture emphasizes:
+- strict separation between validation, cryptography, freshness control, and auditing
+- deterministic behavior at every stage
+- replaceable components as long as interface contracts remain stable
 
-Fiecare modul comunică prin interfețe stabile și poate fi înlocuit fără a afecta
-logica pipeline-ului, atâta timp cât semnăturile rămân compatibile.
-
----
-
-## 2. Component Overview
-
-The system is composed of independent modules. Each module performs one well‑defined
-task and exposes a stable interface. Modules can be replaced or extended without
-modifying the pipeline logic, as long as their interfaces remain compatible.
-
-### 2.1 gateway.py — Asynchronous Message‑Processing Pipeline
+### 1.1 gateway.py — Asynchronous Message‑Processing Pipeline
 
 **Role:** Orchestrates the full security pipeline for incoming messages.
 
@@ -36,14 +29,13 @@ modifying the pipeline logic, as long as their interfaces remain compatible.
 - Logs all outcomes (success or failure) using `AuditLogger`.
 - Produces standardized `GatewayResponse` objects.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `process(raw: dict) -> GatewayResponse`
 - `_check_key_rotation() -> None`
 
-
 ---
 
-### 2.2 schema.py — Strict JSON Schema Validation
+### 1.2 schema.py — Strict JSON Schema Validation
 
 **Role:** Enforces structural correctness of incoming gateway messages.
 
@@ -53,13 +45,12 @@ modifying the pipeline logic, as long as their interfaces remain compatible.
 - Rejects messages with missing fields, extra fields, or invalid types.
 - Raises `SchemaError` when validation fails.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `SchemaValidator.validate(message: dict) -> None`
-
 
 ---
 
-### 2.3 hmac.py — Deterministic HMAC‑SHA256 Backend
+### 1.3 hmac.py — Deterministic HMAC‑SHA256 Backend
 
 **Role:** Implements the HMAC‑SHA256 cryptographic backend used by the gateway.
 
@@ -70,7 +61,7 @@ modifying the pipeline logic, as long as their interfaces remain compatible.
 - Verifies signatures using constant‑time comparison.
 - Provides async wrappers for CPU‑bound signing and verification.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `generate_key(min_len: int) -> str`
 - `load_key_async(config) -> bytes`
 - `sign(payload, key) -> str`
@@ -80,7 +71,7 @@ modifying the pipeline logic, as long as their interfaces remain compatible.
 
 ---
 
-### 2.4 algorithm_base.py / algorithms.py — Crypto Abstraction Layer
+### 1.4 algorithm_base.py / algorithms.py — Crypto Abstraction Layer
 
 **Role:** Provides a unified interface for all cryptographic backends and a registry
 for selecting the active algorithm.
@@ -92,7 +83,7 @@ for selecting the active algorithm.
 - Validates algorithm names and raises `HMACError` for unknown algorithms.
 - Supplies a global singleton (`ALGORITHM_REGISTRY`) for easy access across the gateway.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `Algorithm.generate_key(min_len: int)`
 - `Algorithm.load_key_async(config)`
 - `Algorithm.sign(payload, key)`
@@ -106,7 +97,7 @@ for selecting the active algorithm.
 
 ---
 
-### 2.5 ## key_manager.py — Key Lifecycle Management
+### 1.5 ## key_manager.py — Key Lifecycle Management
 
 **Role:** Handles enterprise-grade key rotation and archival.
 
@@ -117,14 +108,14 @@ for selecting the active algorithm.
 - Performs interval-based rotation checks.
 - Writes updated key material asynchronously via `KeyFileStore`.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `rotation_needed(config, last_rotation) -> bool`
 - `_generate_new_key() -> str`
 - `rotate_async() -> None`
 
 ---
 
-### 2.6 key_loader.py — Async Key File Loader
+### 1.6 key_loader.py — Async Key File Loader
 
 **Role:** Provides asynchronous read/write operations for key-related JSON files.
 
@@ -134,13 +125,13 @@ for selecting the active algorithm.
 - Ensures errors are surfaced as `HMACError`.
 - Restricts usage to key files only (not a generic JSON loader).
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `load_async(path: Path) -> Dict[str, Any]`
 - `write_async(path: Path, content: Dict[str, Any]) -> None`
 
 ---
 
-### 2.7 freshness.py — Monotonic Counter Enforcement
+### 1.7 freshness.py — Monotonic Counter Enforcement
 
 **Role:** Enforces replay protection using a monotonic counter stored in `freshness.json`.
 
@@ -155,14 +146,14 @@ for selecting the active algorithm.
 - Stores updated counter values asynchronously.
 - Raises `FreshnessError` for replay attempts or abnormal increments.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `load_async() -> int`
 - `store_async(value: int) -> None`
 - `validate_and_update_async(incoming: int) -> None`
 
 ---
 
-### 2.8 logger.py — Asynchronous Audit Logging
+### 1.8 logger.py — Asynchronous Audit Logging
 
 **Role:** Records security‑critical events using non‑blocking JSON‑Lines logging.
 
@@ -172,13 +163,13 @@ for selecting the active algorithm.
 - Appends each entry asynchronously to the audit log file.
 - Ensures logging never blocks the asyncio event loop.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `_make_entry(event_type: str, payload: dict) -> dict`
 - `log_event(event_type: str, payload: dict) -> None`
 
 ---
 
-### 2.9 ## exceptions.py — Deterministic Error Hierarchy
+### 1.9 ## exceptions.py — Deterministic Error Hierarchy
 
 **Role:** Defines the structured exception types used across the gateway.
 
@@ -188,7 +179,7 @@ for selecting the active algorithm.
   freshness enforcement.
 - Ensures deterministic error signaling across all pipeline components.
 
-**Hierarchy (actual implementation):**
+**Hierarchy:**
 - `GatewayError` — Base class for all gateway-related errors.
   - `SchemaError` — Raised when a message violates structural schema rules.
   - `HMACError` — Raised when HMAC verification fails or cannot be performed.
@@ -196,7 +187,7 @@ for selecting the active algorithm.
 
 ---
 
-### 2.10 models.py — Standardized Gateway Response DTO
+### 1.10 models.py — Standardized Gateway Response DTO
 
 **Role:** Defines the minimal, deterministic response object returned by the gateway.
 
@@ -205,12 +196,12 @@ for selecting the active algorithm.
 - Provides a stable structure for both success and failure responses.
 - Ensures predictable fields for embedded and industrial integrations.
 
-**Key Interfaces (actual):**
+**Key Interfaces:**
 - `GatewayResponse(status: str, reason: Optional[str])`
 
 ---
 
-## 3. Component Interaction Model
+## 2. Component Interaction Model
 
 The gateway follows a strict interaction pattern:
 
@@ -232,7 +223,7 @@ logic, as long as interfaces remain stable.
 
 ---
 
-## 4. Determinism and Isolation
+## 3. Determinism and Isolation
 
 The component architecture enforces:
 
@@ -245,7 +236,7 @@ No component introduces nondeterministic behavior.
 
 ---
 
-## 5. Extensibility
+## 4. Extensibility
 
 Components are designed for extension:
 
@@ -259,7 +250,7 @@ All extensions preserve pipeline determinism.
 
 ---
 
-## 6. Summary
+## 5. Summary
 
 This document defines the component-level architecture of `secure-message-gateway`,
 detailing **module responsibilities**, **interfaces**, and **interactions**. The design is
