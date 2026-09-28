@@ -1,54 +1,56 @@
 """
-Shared pytest fixtures for constructing fully initialized
-integration configurations used throughout the secure-message-gateway test suite.
+Shared pytest fixtures providing deterministic, fully-initialized integration
+configurations for the secure-message-gateway test suite.
 
 @resume
-    Provides deterministic, reproducible helpers that assemble complete gateway
-    configurations backed by temporary filesystem state.
+    Supplies reproducible filesystem scaffolding and complete gateway
+    configurations, enabling end-to-end integration tests across all pipeline
+    layers: schema validation, cryptographic verification, freshness enforcement,
+    key rotation, and audit logging.
 
 @scope
-    - consistent creation of all persistence-layer artifacts required by integration tests
-      (keys.json, keys_archive.json, freshness.json, audit.log, gateway.log)
-    - isolated and reproducible filesystem behavior via pytest’s tmp_path fixture
-    - stable initialization semantics for cryptographic, freshness, logging, and audit subsystems
-    - simplified test authoring through centralized integration configuration setup
+    - creation of all persistence-layer artifacts:
+        * keys.json
+        * keys_archive.json
+        * freshness.json
+        * audit.log
+    - stable initialization of crypto, freshness, and audit subsystems
+    - isolated filesystem behavior via pytest’s tmp_path fixture
+    - seamless override merging through config_factory
 
 @ensures
-    These fixtures form foundational infrastructure for the gateway’s integration tests,
-    enabling predictable, maintainable, and security‑focused test environments across
-    all pipeline layers.
+    Integration tests operate in deterministic, isolated environments with
+    predictable state, eliminating cross-test interference and host-level
+    variability.
 """
 
 import json
 import pytest
 from pathlib import Path
+from secure_gateway.hmac import HMACAlgorithm
 
 
 @pytest.fixture
 def integration_config_factory(tmp_path, config_factory):
     """
     @resume
-        Factory fixture producing fully initialized integration configurations with
-        deterministic filesystem scaffolding.
+        Factory fixture producing complete, ready-to-use integration
+        configurations backed by isolated temporary filesystem state.
 
     @scope
-        - creation of all required persistence files:
-            * keys.json
-            * keys_archive.json
-            * freshness.json
-            * audit.log
-            * gateway.log
-        - stable initialization of cryptographic, freshness, logging, and audit blocks
-        - reproducible test environments independent of host system state
-        - seamless integration with config_factory for safe override merging
+        - initializes all required gateway persistence files
+        - writes a valid cryptographic key for the selected environment
+        - prepares freshness.json with a deterministic initial counter
+        - ensures audit.log exists for append-only logging
+        - integrates cleanly with config_factory for override injection
 
     @returns
         Callable[[], dict]:
-            A factory function that constructs and returns a complete integration
-            configuration dictionary suitable for end-to-end gateway testing.
+            A factory function that constructs and returns a fully-initialized
+            gateway configuration suitable for end-to-end testing.
 
     @ensures
-        Integration tests can rely on deterministic, fully initialized configuration
+        Integration tests can rely on stable, reproducible configuration
         scaffolding without duplicating boilerplate setup logic.
     """
     def _factory():
@@ -57,14 +59,28 @@ def integration_config_factory(tmp_path, config_factory):
         archive_path = tmp_path / "keys_archive.json"
         freshness_path = tmp_path / "freshness.json"
         audit_path = tmp_path / "audit.log"
-        gateway_log_path = tmp_path / "gateway.log"
 
-        # Initialize files
-        keys_path.write_text("{}", encoding="utf-8")
+        # Generate a valid HMAC key
+        algo = HMACAlgorithm()
+        key_hex = algo.generate_key(32)
+
+        # Initialize keys.json
+        keys_path.write_text(
+            json.dumps({"dev_key": key_hex}),
+            encoding="utf-8"
+        )
+
+        # Initialize archive file
         archive_path.write_text("{}", encoding="utf-8")
-        freshness_path.write_text(json.dumps({"counter": 0}), encoding="utf-8")
+
+        # Initialize freshness state
+        freshness_path.write_text(
+            json.dumps({"counter": 0}),
+            encoding="utf-8"
+        )
+
+        # Initialize audit log
         audit_path.write_text("", encoding="utf-8")
-        gateway_log_path.write_text("", encoding="utf-8")
 
         # Build full config
         return config_factory({
@@ -75,8 +91,8 @@ def integration_config_factory(tmp_path, config_factory):
                 "algorithm": "HMAC",
                 "keys_file": str(keys_path),
                 "keys_archive": str(archive_path),
-                "hmac_algorithm": "SHA256",
-                "allowed_algorithms": ["SHA256"],
+                "hmac_algorithm": "HMAC",
+                "allowed_algorithms": ["HMAC"],
                 "min_key_length": 32,
                 "rotation_required": False,
                 "rotation_interval_days": 30,
@@ -88,10 +104,8 @@ def integration_config_factory(tmp_path, config_factory):
                 "max_increment": 5,
                 "max_drift": 10,
                 "reject_out_of_range": True,
-            },
-
-            "logging": {
-                "path": str(gateway_log_path)
+                "initial_counter": "auto",
+                "reset_on_start": False,
             },
 
             "audit": {

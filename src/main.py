@@ -16,17 +16,6 @@ def load_config(project_root: Path) -> dict:
     return json.loads(config_path.read_text())
 
 
-def load_start_counter(config: dict) -> int:
-    """
-    @summary
-    Return the counter stored in the freshness counter file.
-    No fallback, no validation, no error handling.
-    """
-    freshness_path = Path(config["freshness"]["counter_file"])
-    data = json.loads(freshness_path.read_text())
-    return int(data["counter"])
-
-
 def load_active_key(config: dict) -> str:
     """
     @summary
@@ -37,16 +26,17 @@ def load_active_key(config: dict) -> str:
     return keys_data["dev_key"]
 
 
-async def async_message_generator(count: int, key_hex: str, start_counter: int):
+async def async_message_generator(count: int, key_hex: str):
     """
     @summary
     Asynchronous streaming generator for synthetic messages.
-    Counter increases strictly and deterministically.
+    Counter starts at 1 and increases deterministically.
+    FreshnessManager will handle bootstrap and monotonic validation.
     """
     algo = HMACAlgorithm()
     key_bytes = bytes.fromhex(key_hex)
 
-    counter = start_counter
+    counter = 20  # generator local counter
 
     for _ in range(count):
         counter += 1
@@ -63,15 +53,15 @@ async def async_message_generator(count: int, key_hex: str, start_counter: int):
         await asyncio.sleep(0)  # cooperative scheduling
 
 
-async def process_sequential(gateway: GatewayAsync, key_hex: str, total: int, start_counter: int) -> int:
+async def process_sequential(gateway: GatewayAsync, key_hex: str, total: int) -> int:
     """
     @summary
     Process messages strictly sequentially.
-    Ensures freshness monotonicity without concurrency.
+    FreshnessManager handles bootstrap and monotonic enforcement.
     """
     processed = 0
 
-    async for message in async_message_generator(total, key_hex, start_counter):
+    async for message in async_message_generator(total, key_hex):
         await gateway.process(message)
         processed += 1
 
@@ -91,12 +81,12 @@ async def main():
     @summary
     Deterministic load tester for the secure-message-gateway.
     Sequential processing ensures strict freshness correctness.
+    Freshness bootstrap is handled entirely by FreshnessManager.
     """
     project_root = Path(__file__).resolve().parents[1]
 
     config = load_config(project_root)
     key_hex = load_active_key(config)
-    start_counter = load_start_counter(config)
 
     gateway = GatewayAsync(config)
 
@@ -107,8 +97,7 @@ async def main():
     processed = await process_sequential(
         gateway,
         key_hex,
-        total_messages,
-        start_counter
+        total_messages
     )
 
     elapsed = time.perf_counter() - start_time
