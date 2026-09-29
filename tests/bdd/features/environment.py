@@ -9,10 +9,10 @@ This setup ensures:
     - a fresh key store for each scenario
     - a deterministic freshness counter starting from zero
     - isolated audit and gateway logs
-    - reproducible gateway configuration aligned with acceptance-level behavior
+    - reproducible gateway configuration aligned with acceptance-level behaviour
 
 The environment does not simulate production infrastructure; it provides only
-the minimal scaffolding required to validate observable gateway behavior.
+the minimal scaffolding required to validate observable gateway behaviour.
 """
 
 

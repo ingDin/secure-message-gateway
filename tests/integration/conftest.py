@@ -15,7 +15,7 @@ configurations for the secure-message-gateway test suite.
         * freshness.json
         * audit.log
     - stable initialization of crypto, freshness, and audit subsystems
-    - isolated filesystem behavior via pytest’s tmp_path fixture
+    - isolated filesystem behaviour via pytest’s tmp_path fixture
     - seamless override merging through config_factory
 
 @ensures

@@ -1,18 +1,19 @@
 """
 @resume
-    Modul de integrare care validează subsistemele critice de ciclu criptografic
-    și flux complet al pipeline‑ului.
+    Integration module validating the cryptographic lifecycle subsystems and
+    the complete end‑to‑end gateway pipeline.
 
 @scope
-    - rotația cheilor
-    - arhivarea cheilor vechi
-    - generarea cheilor noi
-    - audit logging pentru KEY_ROTATED
-    - verificarea HMAC după rotație
-    - flux complet de succes (MESSAGE_ACCEPTED)
+    - key rotation
+    - archival of previous key material
+    - generation of new cryptographic keys
+    - audit logging of ROTATION events
+    - HMAC verification after rotation
+    - full successful pipeline execution (MESSAGE_ACCEPTED)
 
 @ensures
-    Gateway-ul menține igiena criptografică și funcționează corect end‑to‑end.
+    The gateway maintains cryptographic hygiene and operates correctly
+    end‑to‑end under rotation, verification, and normal message flow.
 """
 
 import pytest
@@ -26,17 +27,19 @@ from secure_gateway.hmac import HMACAlgorithm
 class TestIntegrationKeyRotation:
     """
     @resume
-        Validează rotația cheilor și respingerea mesajelor semnate cu cheia veche.
+        Validates deterministic key rotation and rejection of messages signed
+        with stale key material.
 
     @scope
         - rotation_required=True
-        - arhivare sub dev_key_archived_<timestamp>
-        - generare cheie nouă
-        - HMAC_FAIL după rotație
-        - audit KEY_ROTATED + HMAC_FAIL
+        - archival under dev_key_archived_<timestamp>
+        - generation of a new key
+        - HMAC_FAIL after rotation
+        - audit events: ROTATION + HMAC_FAIL
 
     @ensures
-        Gateway-ul rotește corect și respinge semnăturile vechi.
+        The gateway rotates keys correctly and rejects signatures produced
+        with the previous key.
     """
 
     @pytest.mark.asyncio
@@ -53,10 +56,7 @@ class TestIntegrationKeyRotation:
         keys_path.write_text(json.dumps({"dev_key": old_key_hex}))
         old_key = bytes.fromhex(old_key_hex)
 
-        freshness_path = Path(config["freshness"]["counter_file"])
-        freshness_path.write_text(json.dumps({"counter": 10}))
-
-        payload = {"id": 1, "counter": 10, "msg": "rotation_test"}
+        payload = {"id": 1, "counter": 1, "msg": "rotation_test"}
         mac = algo.sign(payload, old_key)
         msg = {**payload, "hmac": mac}
 
@@ -92,17 +92,18 @@ class TestIntegrationKeyRotation:
 class TestIntegrationPipelineSuccess:
     """
     @resume
-        Validează fluxul complet de succes al pipeline‑ului.
+        Validates the complete successful execution of the gateway pipeline.
 
     @scope
-        - schema validă
-        - HMAC valid
-        - freshness valid
-        - MESSAGE_ACCEPTED
-        - audit logging
+        - valid schema
+        - valid HMAC signature
+        - valid freshness progression
+        - MESSAGE_ACCEPTED signalling
+        - audit logging of accepted messages
 
     @ensures
-        Gateway-ul funcționează corect end‑to‑end.
+        The gateway processes authentic, fresh messages correctly and produces
+        deterministic audit output.
     """
 
     @pytest.mark.asyncio
@@ -116,14 +117,11 @@ class TestIntegrationPipelineSuccess:
         keys_path.write_text(json.dumps({"dev_key": "77" * 32}))
         key = bytes.fromhex("77" * 32)
 
-        freshness_path = Path(config["freshness"]["counter_file"])
-        freshness_path.write_text(json.dumps({"counter": 10}))
-
-        payload1 = {"id": 1, "counter": 10, "msg": "bootstrap"}
+        payload1 = {"id": 1, "counter": 1, "msg": "bootstrap"}
         mac1 = algo.sign(payload1, key)
         msg1 = {**payload1, "hmac": mac1}
 
-        payload2 = {"id": 2, "counter": 12, "msg": "valid"}
+        payload2 = {"id": 2, "counter": 3, "msg": "valid"}
         mac2 = algo.sign(payload2, key)
         msg2 = {**payload2, "hmac": mac2}
 

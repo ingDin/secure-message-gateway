@@ -8,7 +8,9 @@ Implements:
 - deterministic signing (sync + async)
 - constant‑time verification (sync + async)
 
-All failures raise `HMACError` to ensure deterministic and auditable behavior.
+Key material validation (missing key, non-hex key) raises `KeyError` to trigger
+deterministic key rotation. Cryptographic failures (weak key, disallowed
+algorithm, signature mismatch) raise `HMACError`.
 """
 
 import os
@@ -18,7 +20,7 @@ import asyncio
 from hashlib import sha256
 from pathlib import Path
 
-from secure_gateway.exceptions import HMACError
+from secure_gateway.exceptions import HMACError, KeyError
 from secure_gateway.key_loader import KeyFileStore
 
 # Import ONLY the base class to avoid circular import
@@ -34,34 +36,52 @@ class HMACAlgorithm(Algorithm):
 
     Responsibilities:
     - generate secure random keys
-    - load and validate keys from keys.json
+    - validate crypto algorithm policy
+    - load and validate key material
     - sign payloads deterministically
     - verify signatures securely
-    - provide async wrappers for CPU‑bound operations
-
-    @examples
-    >>> algo = HMACAlgorithm()
-    >>> key = algo.generate_key(32)
-    >>> sig = algo.sign({"msg": "hello"}, bytes.fromhex(key))
     """
 
     name = "HMAC"
+
+    def __init__(self, config=None):
+        """
+        @summary
+        Initialize the HMAC backend and validate algorithm policy.
+
+        @parameters
+        config : dict | None
+            Optional gateway configuration. If provided, algorithm policy is
+            validated immediately. If not provided, validation occurs when
+            load_key_async() is called.
+        """
+        self.config = config
+        if config is not None:
+            self._validate_algorithm(config)
+
+    def _validate_algorithm(self, config):
+        """
+        @summary
+        Validate that the configured algorithm is permitted.
+
+        @raises
+        HMACError
+            If the configured algorithm is not allowed.
+        """
+        algo = config["crypto"]["hmac_algorithm"]
+        allowed = config["crypto"]["allowed_algorithms"]
+
+        if algo not in allowed:
+            raise HMACError(f"Algorithm '{algo}' not allowed. Allowed: {allowed}")
 
     def generate_key(self, min_len: int) -> str:
         """
         @summary
         Generate a secure random key of at least `min_len` bytes.
 
-        @parameters
-        min_len : int
-            Minimum required key length in bytes.
-
         @returns
         str
             Hex‑encoded random key.
-
-        @examples
-        >>> key = algo.generate_key(32)
         """
         return os.urandom(min_len).hex()
 
@@ -70,21 +90,19 @@ class HMACAlgorithm(Algorithm):
         @summary
         Load and validate the cryptographic key from keys.json.
 
-        @parameters
-        config : dict
-            Gateway configuration containing crypto settings.
+        Validation rules:
+        - missing key → KeyError
+        - non-hex key → KeyError
+        - key too short → HMACError
+        - disallowed algorithm → HMACError
 
         @returns
         bytes
             Loaded and validated key material.
-
-        @raises
-        HMACError
-            If the key is missing, invalid, too short, or the algorithm is not allowed.
-
-        @examples
-        >>> key = await algo.load_key_async(config)
         """
+        # Validate algorithm policy (if not validated in __init__)
+        self._validate_algorithm(config)
+
         env = config["environment"]
         key_name = f"{env}_key"
 
@@ -92,23 +110,20 @@ class HMACAlgorithm(Algorithm):
         keys = await KeyFileStore.load_async(keys_path)
 
         if key_name not in keys:
-            raise HMACError(f"Missing key '{key_name}' in keys.json")
+            raise KeyError(f"Missing key '{key_name}' in keys.json")
 
+        # Validate hex encoding
         try:
             key = bytes.fromhex(keys[key_name])
         except ValueError:
-            raise HMACError(f"Key '{key_name}' must be hex-encoded")
+            raise KeyError(f"Key '{key_name}' must be hex-encoded")
 
+        # Validate minimum length
         min_len = config["crypto"]["min_key_length"]
         if len(key) < min_len:
             raise HMACError(
                 f"Key '{key_name}' too short: {len(key)} bytes (min {min_len})"
             )
-
-        algo = config["crypto"]["hmac_algorithm"]
-        allowed = config["crypto"]["allowed_algorithms"]
-        if algo not in allowed:
-            raise HMACError(f"Algorithm '{algo}' not allowed. Allowed: {allowed}")
 
         return key
 
@@ -117,18 +132,9 @@ class HMACAlgorithm(Algorithm):
         @summary
         Compute a deterministic HMAC‑SHA256 signature for the given payload.
 
-        @parameters
-        payload : dict
-            JSON‑serializable message to sign.
-        key : bytes
-            Cryptographic key used for signing.
-
         @returns
         str
             Hex‑encoded HMAC signature.
-
-        @examples
-        >>> sig = algo.sign({"id": 1}, key)
         """
         message = json.dumps(
             payload,
@@ -144,23 +150,9 @@ class HMACAlgorithm(Algorithm):
         @summary
         Verify the HMAC signature using constant‑time comparison.
 
-        @parameters
-        payload : dict
-            JSON‑serializable message whose signature is being verified.
-        key : bytes
-            Cryptographic key used for verification.
-        expected_hmac : str
-            Expected hex‑encoded signature.
-
-        @returns
-        None
-
         @raises
         HMACError
             If the signature does not match.
-
-        @examples
-        >>> algo.verify({"id": 1}, key, sig)
         """
         computed = self.sign(payload, key)
         if not hmac.compare_digest(computed, expected_hmac):
@@ -170,19 +162,6 @@ class HMACAlgorithm(Algorithm):
         """
         @summary
         Asynchronous wrapper for deterministic HMAC signing.
-
-        @parameters
-        payload : dict
-            JSON‑serializable message to sign.
-        key : bytes
-            Cryptographic key used for signing.
-
-        @returns
-        str
-            Hex‑encoded HMAC signature.
-
-        @examples
-        >>> sig = await algo.sign_async({"id": 1}, key)
         """
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.sign, payload, key)
@@ -191,24 +170,6 @@ class HMACAlgorithm(Algorithm):
         """
         @summary
         Asynchronous wrapper for constant‑time HMAC verification.
-
-        @parameters
-        payload : dict
-            Message whose signature is being verified.
-        key : bytes
-            Cryptographic key used for verification.
-        expected_hmac : str
-            Expected hex‑encoded signature.
-
-        @returns
-        None
-
-        @raises
-        HMACError
-            If the signature does not match.
-
-        @examples
-        >>> await algo.verify_async({"id": 1}, key, sig)
         """
         computed = await self.sign_async(payload, key)
         if not hmac.compare_digest(computed, expected_hmac):

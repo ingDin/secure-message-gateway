@@ -1,14 +1,15 @@
 """
 @summary
-Asynchronous loader and writer for key‑related JSON files used by the
-secure‑message‑gateway. This module is intentionally specialized and handles
+Asynchronous loader and writer for key-related JSON files used by the
+secure-message-gateway. This module is intentionally specialized and handles
 ONLY the following files:
 
 - keys.json
 - keys_archive.json
 
 It provides deterministic loading and storage of key material and raises
-`HMACError` for any failure to ensure predictable and auditable behavior.
+`KeyError` for any failure to ensure predictable and auditable behaviour
+distinct from HMAC verification failures.
 """
 
 import json
@@ -16,13 +17,13 @@ from pathlib import Path
 from typing import Dict, Any
 import aiofiles
 
-from secure_gateway.exceptions import HMACError
+from secure_gateway.exceptions import KeyError
 
 
 class KeyFileStore:
     """
     @summary
-    Async loader/writer for key‑related JSON files. This class is NOT a generic
+    Async loader/writer for key-related JSON files. This class is NOT a generic
     JSON loader — it is strictly dedicated to key storage files used by the
     gateway.
 
@@ -50,18 +51,26 @@ class KeyFileStore:
             Parsed JSON content containing key material.
 
         @raises
-        HMACError
-            If the file cannot be opened, read, or parsed.
+        KeyError
+            If the file does not exist, cannot be opened/read,
+            or contains invalid JSON.
 
         @examples
         >>> keys = await KeyFileStore.load_async(Path("keys.json"))
         """
+        if not path.exists():
+            raise KeyError(f"Key file not found: {path}")
+
         try:
             async with aiofiles.open(path, "r", encoding="utf-8") as f:
                 raw = await f.read()
-                return json.loads(raw)
         except Exception as exc:
-            raise HMACError(f"Failed to load key file: {path}") from exc
+            raise KeyError(f"Failed to read key file: {path}") from exc
+
+        try:
+            return json.loads(raw)
+        except Exception as exc:
+            raise KeyError(f"Invalid JSON in key file: {path}") from exc
 
     @staticmethod
     async def write_async(path: Path, content: Dict[str, Any]) -> None:
@@ -79,7 +88,7 @@ class KeyFileStore:
         None
 
         @raises
-        HMACError
+        KeyError
             If the file cannot be written.
 
         @examples
@@ -89,4 +98,4 @@ class KeyFileStore:
             async with aiofiles.open(path, "w", encoding="utf-8") as f:
                 await f.write(json.dumps(content, indent=2))
         except Exception as exc:
-            raise HMACError(f"Failed to write key file: {path}") from exc
+            raise KeyError(f"Failed to write key file: {path}") from exc

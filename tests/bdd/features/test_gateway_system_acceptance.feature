@@ -29,17 +29,13 @@ Feature: Secure Gateway Acceptance Validation
       | HMAC_FAIL   |
 
   Scenario: Reject replayed message when the initial counter is loaded from storage
-    Given the gateway starts with a stored counter value
-    And a message with counter 1 is processed successfully
-    And the same message is processed again with the same counter
-    And the same message is processed a third time with the same counter
-    When the gateway processes the third message
+    Given the gateway starts with a persisted freshness.json containing counter 1
+    And the freshness subsystem has loaded the stored counter value
+    When the gateway processes a message with counter 1
     Then the gateway responds with "FRESHNESS_FAIL"
     And the audit log contains at least these entries in order:
-      | event            |
-      | MESSAGE_ACCEPTED |
-      | MESSAGE_ACCEPTED |
-      | FRESHNESS_FAIL   |
+      | event          |
+      | FRESHNESS_FAIL |
 
   Scenario: Trigger rotation when interval expired
     Given rotation is required

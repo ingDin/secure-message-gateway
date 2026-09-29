@@ -2,7 +2,7 @@
 Unit test suite for AuditLogger.
 
 @resume
-    Validates the correctness, stability, and failure behavior of the audit
+    Validates the correctness, stability, and failure behaviour of the audit
     logging subsystem responsible for producing append-only, JSON-lines
     structured audit events.
 
@@ -10,11 +10,11 @@ Unit test suite for AuditLogger.
     - successful event logging
     - invalid payload serialization failures
     - I/O failures during async writes
-    - correct append behavior for multiple sequential events
+    - correct append behaviour for multiple sequential events
 
 @ensures
     Upstream gateway components relying on AuditLogger receive predictable,
-    safe, and contract‑respecting behavior, with reliable forensic traceability.
+    safe, and contract‑respecting behaviour, with reliable forensic traceability.
 """
 
 import pytest
@@ -35,7 +35,7 @@ def log_path(tmp_path):
         Provides an isolated temporary audit.log path.
 
     @scope
-        - deterministic filesystem behavior
+        - deterministic filesystem behaviour
         - isolated audit state
         - reproducible append-only semantics
 
@@ -73,7 +73,7 @@ class TestAuditLogger:
 
     @scope
         - deterministic JSON-lines serialization
-        - strict failure signaling for invalid payloads
+        - strict failure signalling for invalid payloads
         - reliable async write semantics
         - correct append-only ordering
 
@@ -141,13 +141,13 @@ class TestAuditLogger:
                 await audit_logger.log_event("X", {"y": 2})
 
     # ----------------------------------------------------------------------
-    # Multiple append behavior
+    # Multiple append behaviour
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     async def test_log_event_multiple(self, audit_logger, log_path):
         """
         @resume
-            Validates correct append-only behavior for sequential events.
+            Validates correct append-only behaviour for sequential events.
         """
 
         # --- Arrange ---

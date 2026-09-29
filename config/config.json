@@ -21,7 +21,7 @@
   "freshness": {
     "counter_file": "config/freshness.json",
     "initial_counter": 20,
-    "reset_on_start": true,
+    "reset_on_start": false,
 
     "min_increment": 1,
     "max_increment": 5,

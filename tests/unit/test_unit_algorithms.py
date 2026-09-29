@@ -2,18 +2,18 @@
 Unit test suite for AlgorithmRegistry.
 
 @resume
-    Validates the foundational behavior of the cryptographic algorithm
+    Validates the foundational behaviour of the cryptographic algorithm
     registry subsystem.
 
 @scope
     - deterministic resolution of valid algorithm identifiers
-    - domain-specific failure signaling for invalid identifiers
+    - domain-specific failure signalling for invalid identifiers
     - capability reporting via supports()
-    - correct initialization and behavior of the global ALGORITHM_REGISTRY
+    - correct initialization and behaviour of the global ALGORITHM_REGISTRY
 
 @ensures
     Upstream cryptographic components relying on AlgorithmRegistry receive
-    predictable, stable, and contract-respecting behavior.
+    predictable, stable, and contract-respecting behaviour.
 """
 
 import pytest
@@ -34,7 +34,7 @@ def registry():
         Provides a fresh AlgorithmRegistry instance for isolated unit testing.
 
     @scope
-        - ensures deterministic behavior by avoiding shared state
+        - ensures deterministic behaviour by avoiding shared state
         - prevents cross-test contamination
 
     @returns
@@ -51,7 +51,7 @@ def global_registry():
 
     @scope
         - validates correct initialization of the shared registry
-        - ensures consistent behavior across application lifecycle
+        - ensures consistent behaviour across application lifecycle
 
     @returns
         The global AlgorithmRegistry singleton.
@@ -80,7 +80,7 @@ class TestAlgorithmRegistry:
 
     @scope
         - valid algorithm resolution
-        - deterministic failure signaling
+        - deterministic failure signalling
         - capability reporting
         - global registry correctness
 
@@ -126,7 +126,7 @@ class TestAlgorithmRegistry:
     def test_get_invalid_algorithm(self, registry):
         """
         @resume
-            Validates deterministic failure signaling when resolving unknown
+            Validates deterministic failure signalling when resolving unknown
             algorithm identifiers.
 
         @scope
@@ -177,12 +177,12 @@ class TestAlgorithmRegistry:
     def test_global_registry_instance(self, global_registry):
         """
         @resume
-            Validates correct initialization and behavior of the global
+            Validates correct initialization and behaviour of the global
             ALGORITHM_REGISTRY instance.
 
         @scope
             - global registry correctness
-            - deterministic behavior across lookups
+            - deterministic behaviour across lookups
 
         @ensures
             The global registry behaves consistently across the application lifecycle.

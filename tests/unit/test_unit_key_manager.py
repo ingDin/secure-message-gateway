@@ -1,20 +1,21 @@
 """
+@summary
 Unit test suite for KeyManager.
 
 @resume
-    Validates the correctness, stability, and failure behavior of the
+    Validates the correctness, stability, and failure behaviour of the
     key‑rotation subsystem responsible for generating new cryptographic keys,
     archiving old ones, and enforcing rotation interval policies.
 
 @scope
     - rotation interval logic
-    - successful key rotation and archival behavior
+    - successful key rotation and archival behaviour
     - deterministic error propagation from dependent subsystems
-    - correct interaction with algorithm registry, key loader, key writer, and audit
+    - correct interaction with algorithm registry, key loader, and key writer
 
 @ensures
     Upstream gateway components relying on KeyManager receive predictable,
-    safe, and contract‑respecting behavior.
+    safe, and contract‑respecting behaviour.
 """
 
 import pytest
@@ -23,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 
 from secure_gateway.key_manager import KeyManager
-from secure_gateway.exceptions import HMACError
+from secure_gateway.exceptions import HMACError, KeyError
 
 
 # ============================================================================
@@ -36,7 +37,6 @@ NEW_KEY = "new_key_hex"
 PATCH_ALGO = "secure_gateway.key_manager.ALGORITHM_REGISTRY.get"
 PATCH_LOAD = "secure_gateway.key_manager.KeyFileStore.load_async"
 PATCH_WRITE = "secure_gateway.key_manager.KeyFileStore.write_async"
-PATCH_IO = "aiofiles.open"
 
 
 # ============================================================================
@@ -47,13 +47,12 @@ PATCH_IO = "aiofiles.open"
 def key_manager_config_factory(tmp_path, config_factory):
     """
     @resume
-        Provides a minimal KeyManager configuration with isolated key and audit paths.
+        Provides a minimal KeyManager configuration with isolated key paths.
 
     @scope
-        - deterministic filesystem behavior
+        - deterministic filesystem behaviour
         - isolated key files and archives
         - reproducible rotation interval logic
-        - controlled audit logging environment
 
     @returns
         A fully configured KeyManager configuration dictionary.
@@ -70,92 +69,7 @@ def key_manager_config_factory(tmp_path, config_factory):
                 "rotation_interval_days": 7,
             },
 
-            "audit": {
-                "path": str(tmp_path / "audit.log"),
-            },
-
-            **(overrides or {})
-        })
-
-    return _create
-
-
-# ============================================================================
-# Test suite
-# ============================================================================
-
-"""
-Unit test suite for KeyManager.
-
-@resume
-    Validates the correctness, stability, and failure behavior of the
-    key‑rotation subsystem responsible for generating new cryptographic keys,
-    archiving old ones, and enforcing rotation interval policies.
-
-@scope
-    - rotation interval logic
-    - successful key rotation and archival behavior
-    - deterministic error propagation from dependent subsystems
-    - correct interaction with algorithm registry, key loader, key writer, and audit
-
-@ensures
-    Upstream gateway components relying on KeyManager receive predictable,
-    safe, and contract‑respecting behavior.
-"""
-
-import pytest
-import json
-from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock
-
-from secure_gateway.key_manager import KeyManager
-from secure_gateway.exceptions import HMACError
-
-
-# ============================================================================
-# Test constants
-# ============================================================================
-
-OLD_KEY = "old_key_hex"
-NEW_KEY = "new_key_hex"
-
-PATCH_ALGO = "secure_gateway.key_manager.ALGORITHM_REGISTRY.get"
-PATCH_LOAD = "secure_gateway.key_manager.KeyFileStore.load_async"
-PATCH_WRITE = "secure_gateway.key_manager.KeyFileStore.write_async"
-PATCH_IO = "aiofiles.open"
-
-
-# ============================================================================
-# Fixtures
-# ============================================================================
-
-@pytest.fixture
-def key_manager_config_factory(tmp_path, config_factory):
-    """
-    @resume
-        Provides a minimal KeyManager configuration with isolated key and audit paths.
-
-    @scope
-        - deterministic filesystem behavior
-        - isolated key files and archives
-        - reproducible rotation interval logic
-        - controlled audit logging environment
-
-    @returns
-        A fully configured KeyManager configuration dictionary.
-    """
-    def _create(overrides=None):
-        return config_factory({
-            "environment": "dev",
-
-            "crypto": {
-                "keys_file": str(tmp_path / "keys.json"),
-                "keys_archive": str(tmp_path / "keys_archive.json"),
-                "algorithm": "HMAC",
-                "min_key_length": 4,
-                "rotation_interval_days": 7,
-            },
-
+            # audit logging is no longer used by KeyManager.rotate_async
             "audit": {
                 "path": str(tmp_path / "audit.log"),
             },
@@ -177,9 +91,9 @@ class TestKeyManager:
 
     @scope
         - deterministic rotation interval evaluation
-        - correct key archival and replacement behavior
+        - correct key archival and replacement behaviour
         - strict failure propagation from dependent subsystems
-        - isolated validation of algorithm registry, key loader, key writer, and audit
+        - isolated validation of algorithm registry, key loader, and key writer
 
     @ensures
         The key‑rotation subsystem behaves predictably and supports secure
@@ -194,6 +108,7 @@ class TestKeyManager:
         @resume
             Validates rotation interval expiration logic.
         """
+
         # --- Arrange ---
         config = key_manager_config_factory()
         last = datetime.now(timezone.utc) - timedelta(days=10)
@@ -209,6 +124,7 @@ class TestKeyManager:
         @resume
             Validates rotation interval non-expiration logic.
         """
+
         # --- Arrange ---
         config = key_manager_config_factory()
         last = datetime.now(timezone.utc)
@@ -228,7 +144,15 @@ class TestKeyManager:
     ):
         """
         @resume
-            Validates successful key rotation behavior.
+            Validates successful key rotation behaviour.
+
+        @scope
+            - correct archival of old key
+            - correct generation and persistence of new key
+            - deterministic update of keys.json and keys_archive.json
+
+        @ensures
+            rotate_async performs a complete, deterministic key rotation.
         """
 
         # --- Arrange ---
@@ -251,39 +175,71 @@ class TestKeyManager:
         assert OLD_KEY in updated_archive.values()
 
     # ----------------------------------------------------------------------
-    # Failure scenarios
+    # Async key rotation — failure scenarios
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "keys_content,config_override,patch_target,patch_effect",
+        "keys_content,config_override,patch_target,patch_effect,expected_exception,expected_message",
         [
-            # Missing key in keys.json
-            ({"prod_key": OLD_KEY}, {}, None, None),
+            # Missing key in keys.json → HMACError
+            (
+                {"prod_key": OLD_KEY},
+                {},
+                None,
+                None,
+                HMACError,
+                "Missing key"
+            ),
 
-            # Algorithm registry failure
-            ({"dev_key": OLD_KEY}, {"algorithm": "UNKNOWN"},
-             PATCH_ALGO, HMACError("algorithm lookup failed")),
+            # Algorithm registry failure → HMACError
+            (
+                {"dev_key": OLD_KEY},
+                {"algorithm": "UNKNOWN"},
+                PATCH_ALGO,
+                HMACError("algorithm lookup failed"),
+                HMACError,
+                "Algorithm"
+            ),
 
-            # KeyFileStore.load_async failure
-            ({"dev_key": OLD_KEY}, {},
-             PATCH_LOAD, HMACError("key loading failed")),
+            # KeyFileStore.load_async failure → KeyError
+            (
+                {"dev_key": OLD_KEY},
+                {},
+                PATCH_LOAD,
+                KeyError("key loading failed"),
+                KeyError,
+                "key loading failed"
+            ),
 
-            # KeyFileStore.write_async failure
-            ({"dev_key": OLD_KEY}, {},
-             PATCH_WRITE, HMACError("key writing failed")),
-
-            # Audit log I/O failure
-            ({"dev_key": OLD_KEY}, {},
-             PATCH_IO, OSError("audit log write failed")),
+            # KeyFileStore.write_async failure → KeyError
+            (
+                {"dev_key": OLD_KEY},
+                {},
+                PATCH_WRITE,
+                KeyError("key writing failed"),
+                KeyError,
+                "key writing failed"
+            ),
         ]
     )
     async def test_rotate_async_failures(
         self, key_manager_config_factory, json_file_factory, tmp_path,
-        keys_content, config_override, patch_target, patch_effect
+        keys_content, config_override, patch_target, patch_effect,
+        expected_exception, expected_message
     ):
         """
         @resume
-            Validates deterministic failure propagation during rotation.
+            Validates deterministic failure propagation during async key rotation.
+
+        @scope
+            - missing key detection in keys.json (HMACError)
+            - algorithm registry lookup failures (HMACError)
+            - key file loading failures (KeyError)
+            - key file writing failures (KeyError)
+
+        @ensures
+            rotate_async raises the correct domain‑specific exception type
+            (HMACError vs KeyError) for each failure scenario.
         """
 
         # --- Arrange ---
@@ -292,10 +248,13 @@ class TestKeyManager:
 
         # --- Act / Assert ---
         if patch_target is None:
-            with pytest.raises(HMACError):
+            # Missing key case: no patching, direct HMACError
+            with pytest.raises(expected_exception) as exc:
                 await KeyManager(config).rotate_async()
+            assert expected_message in str(exc.value)
             return
 
         with patch(patch_target, side_effect=patch_effect):
-            with pytest.raises(HMACError):
+            with pytest.raises(expected_exception) as exc:
                 await KeyManager(config).rotate_async()
+            assert expected_message in str(exc.value)

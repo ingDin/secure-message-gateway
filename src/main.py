@@ -36,7 +36,7 @@ async def async_message_generator(count: int, key_hex: str):
     algo = HMACAlgorithm()
     key_bytes = bytes.fromhex(key_hex)
 
-    counter = 20  # generator local counter
+    counter = 0  # generator local counter
 
     for _ in range(count):
         counter += 1

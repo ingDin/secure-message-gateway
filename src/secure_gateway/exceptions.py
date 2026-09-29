@@ -2,7 +2,8 @@
 @summary
 Defines the structured exception hierarchy for the secure-message-gateway.
 All error types provide deterministic signaling across schema validation,
-cryptographic verification, freshness enforcement, and gateway orchestration.
+cryptographic verification, freshness enforcement, key management, and
+gateway orchestration.
 
 All exceptions derive from GatewayError to ensure consistent handling,
 auditable failure paths, and predictable propagation throughout the pipeline.
@@ -41,12 +42,12 @@ class SchemaError(GatewayError):
 class HMACError(GatewayError):
     """
     @summary
-    Raised when HMAC verification fails or key material is invalid.
+    Raised when HMAC verification fails.
 
     @raises
     HMACError
-        For signature mismatches, corrupted keys, unsupported algorithms,
-        or any deterministic cryptographic failure.
+        For signature mismatches, falsified messages, payload tampering,
+        or any deterministic HMAC verification failure.
 
     @examples
     >>> raise HMACError("Invalid HMAC signature")
@@ -65,4 +66,27 @@ class FreshnessError(GatewayError):
 
     @examples
     >>> raise FreshnessError("Replay detected: incoming < last")
+    """
+
+
+class KeyError(GatewayError):
+    """
+    @summary
+    Raised when key loading or key storage fails for any reason.
+
+    This error type is used exclusively for key material access:
+    - missing key files
+    - unreadable key files
+    - invalid JSON in key files
+    - any deterministic failure in key-related file I/O
+
+    GatewayAsync treats KeyError as a trigger for automatic key rotation,
+    in accordance with the security model.
+
+    @raises
+    KeyError
+        For any deterministic key loading or key storage failure.
+
+    @examples
+    >>> raise KeyError("keys.json not found")
     """

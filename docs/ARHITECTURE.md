@@ -15,7 +15,7 @@ validation → crypto → freshness → audit → response
 Core architectural properties:
 - deterministic ordering of all operations  
 - isolation between functional domains  
-- reproducible behavior across environments  
+- reproducible behaviour across environments  
 - predictable error signaling  
 - async I/O for all stateful subsystems  
 
@@ -47,7 +47,6 @@ Each domain is isolated and communicates through stable, deterministic interface
 ## 3. Architecture Diagram
 
 ```mermaid
-
 classDiagram
     direction LR
 
@@ -96,50 +95,11 @@ classDiagram
     GatewayAsync --> AuditLogger : logs events
     GatewayAsync --> KeyManager : rotates keys
     GatewayAsync --> GatewayResponse : returns
-
-
-
 ```
-
-## 4. Execution Model
-
-The gateway operates under a fully asynchronous execution model:
-
-- key loading → async file I/O  
-- freshness persistence → async file I/O  
-- audit logging → async file I/O  
-- crypto operations → synchronous or executor-offloaded  
-
-This ensures non-blocking behavior and predictable latency.
-
-## 5. Determinism Guarantees
-
-Determinism is enforced through:
-
-- sorted JSON payloads for signing  
-- constant-time HMAC verification  
-- atomic freshness updates  
-- strict schema enforcement  
-- stable error codes  
-- structured audit events  
-
-No subsystem introduces nondeterministic behavior.
-
-## 6. Extensibility Model
-
-The architecture supports controlled extension:
-
-- new crypto algorithms via registry  
-- custom rotation policies  
-- extended freshness rules  
-- alternative audit backends  
-- schema evolution for new message types  
-
-All extensions must preserve deterministic behavior.
 
 ## 7. Summary
 
 The gateway architecture provides a **deterministic**, **auditable**, and **modular**
 security pipeline suitable for **embedded**, **industrial**, and **safety-critical systems**.
 It defines **clear functional domains**, a **fixed execution sequence**, and **strict isolation**
-between components, ensuring **predictable** and **reproducible behavior**.
+between components, ensuring **predictable** and **reproducible behaviour**.

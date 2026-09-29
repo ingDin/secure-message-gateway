@@ -44,11 +44,11 @@ def step_gateway_response(context, reason):
 
 
 # ============================================================================
-# Audit order validator
+# Audit order validator (entries)
 # ============================================================================
 
 @then("the audit log contains at least these entries in order:")
-def step_audit_order(context):
+def step_audit_entries(context):
     events = _audit_events(context)
     expected = [row[0] for row in context.table]
 
@@ -72,7 +72,7 @@ def step_audit_order(context):
 
 @given("a clean gateway environment")
 def step_clean_env(context):
-    # Environment is prepared in environment.py
+    # environment.py prepares everything
     pass
 
 
@@ -85,8 +85,9 @@ def step_valid_message(context):
     algo = HMACAlgorithm()
     key_hex = "aa" * 32
 
-    keys_path = Path(context.configuration["crypto"]["keys_file"])
-    keys_path.write_text(json.dumps({"dev_key": key_hex}))
+    Path(context.configuration["crypto"]["keys_file"]).write_text(
+        json.dumps({"dev_key": key_hex})
+    )
 
     payload = {"id": 1, "counter": 1, "msg": "hello"}
     mac = algo.sign(payload, bytes.fromhex(key_hex))
@@ -104,7 +105,6 @@ async def step_process_message(context):
 
 @given("a message missing required fields")
 def step_invalid_schema(context):
-    # Missing msg and hmac
     context.message = {"id": 1, "counter": 1}
 
 
@@ -119,49 +119,32 @@ def step_invalid_hmac(context):
 
 
 # ============================================================================
-# Scenario: Reject replayed message (counter loaded from file)
+# Scenario: Reject replayed message when the initial counter is loaded from storage
 # ============================================================================
 
-@given("the gateway starts with a stored counter value")
+@given("the gateway starts with a persisted freshness.json containing counter 1")
 def step_gateway_stored_counter(context):
-    # freshness.json already contains {"counter": 0} from environment.py
-    pass
+    freshness_path = Path(context.configuration["freshness"]["counter_file"])
+    freshness_path.write_text(json.dumps({"counter": 1}))
 
 
-@given("a message with counter 1 is processed successfully")
-async def step_first_accept(context):
+@given("the freshness subsystem has loaded the stored counter value")
+def step_freshness_loaded(context):
+    # Prepare the replayed message here, same pattern as other scenarios.
     algo = HMACAlgorithm()
     key_hex = "aa" * 32
 
-    keys_path = Path(context.configuration["crypto"]["keys_file"])
-    keys_path.write_text(json.dumps({"dev_key": key_hex}))
+    Path(context.configuration["crypto"]["keys_file"]).write_text(
+        json.dumps({"dev_key": key_hex})
+    )
 
     payload = {"id": 1, "counter": 1, "msg": "hello"}
     mac = algo.sign(payload, bytes.fromhex(key_hex))
-    msg = {**payload, "hmac": mac}
-
-    # FIRST → MESSAGE_ACCEPTED (increment = 1 because last=0)
-    await context.gateway.process(msg)
-
-    context.last_payload = payload
-    context.last_hmac = mac
+    context.message = {**payload, "hmac": mac}
 
 
-@given("the same message is processed again with the same counter")
-async def step_second_accept(context):
-    # SECOND → MESSAGE_ACCEPTED (increment = 1 again, depending on your gateway logic)
-    msg = {**context.last_payload, "hmac": context.last_hmac}
-    await context.gateway.process(msg)
-
-
-@given("the same message is processed a third time with the same counter")
-def step_third_attempt(context):
-    # THIRD → expected to fail freshness (increment = 0)
-    context.message = {**context.last_payload, "hmac": context.last_hmac}
-
-
-@when("the gateway processes the third message")
-async def step_process_third(context):
+@when("the gateway processes a message with counter 1")
+async def step_process_replayed_message(context):
     context.response = await context.gateway.process(context.message)
 
 
@@ -178,8 +161,9 @@ def step_rotation_required(context):
 def step_outdated_key(context):
     algo = HMACAlgorithm()
 
-    keys_path = Path(context.configuration["crypto"]["keys_file"])
-    keys_path.write_text(json.dumps({"dev_key": "00" * 32}))
+    Path(context.configuration["crypto"]["keys_file"]).write_text(
+        json.dumps({"dev_key": "00" * 32})
+    )
 
     payload = {"id": 1, "counter": 1, "msg": "init"}
     mac = algo.sign(payload, b"0" * 32)
@@ -191,18 +175,13 @@ async def step_process_initial(context):
     context.response = await context.gateway.process(context.initial_message)
 
 
-@then('the audit log contains "ROTATION" as the first event')
-def step_rotation_first(context):
-    events = _audit_events(context)
-    assert events[0] == "KEY_ROTATED"
-
-
 @when("a valid message signed with the rotated key is processed")
 async def step_process_rotated(context):
     algo = HMACAlgorithm()
 
-    keys_path = Path(context.configuration["crypto"]["keys_file"])
-    rotated_key_hex = json.loads(keys_path.read_text())["dev_key"]
+    rotated_key_hex = json.loads(
+        Path(context.configuration["crypto"]["keys_file"]).read_text()
+    )["dev_key"]
 
     payload = {"id": 1, "counter": 2, "msg": "hello"}
     mac = algo.sign(payload, bytes.fromhex(rotated_key_hex))

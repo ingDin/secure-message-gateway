@@ -1,13 +1,13 @@
 """
-@resume
-    Integration module validating cryptographic integrity enforcement through
-    deterministic HMAC verification.
+@summary
+Integration test suite validating deterministic cryptographic integrity
+enforcement through the gateway’s HMAC subsystem.
 
-@scope
-    - invalid HMAC signatures
-    - valid HMAC signatures
-    - deterministic HMAC_FAIL and HMAC_OK signalling
-    - audit logging of cryptographic events
+Covers both negative and positive verification paths:
+
+    - invalid HMAC signatures → deterministic HMAC_FAIL
+    - valid HMAC signatures → deterministic HMAC_OK + MESSAGE_ACCEPTED
+    - audit logging of all cryptographic events
 
 @ensures
     Only authentic, untampered messages proceed to freshness validation.
@@ -23,15 +23,15 @@ from secure_gateway.hmac import HMACAlgorithm
 class TestIntegrationHMACInvalid:
     """
     @resume
-        Validates rejection of messages with incorrect HMAC signatures.
+        Validates rejection of messages containing incorrect HMAC signatures.
 
     @scope
-        - incorrect HMAC
-        - deterministic HMAC_FAIL
-        - audit logging
+        - incorrect HMAC value
+        - deterministic HMAC_FAIL signalling
+        - audit logging of failure events
 
     @ensures
-        Gateway halts before freshness execution.
+        The gateway halts before freshness validation and records the failure.
     """
 
     @pytest.mark.asyncio
@@ -45,8 +45,8 @@ class TestIntegrationHMACInvalid:
         keys_path.write_text(json.dumps({"dev_key": "aa" * 32}))
         key = bytes.fromhex("aa" * 32)
 
-        payload = {"id": 1, "counter": 5, "msg": "hello"}
-        msg = {**payload, "hmac": "deadbeef"}
+        payload = {"id": 1, "counter": 1, "msg": "hello"}
+        msg = {**payload, "hmac": "deadbeef"}  # intentionally invalid
 
         # --- Act ---
         response = await gateway.process(msg)
@@ -63,15 +63,15 @@ class TestIntegrationHMACInvalid:
 class TestIntegrationHMACValid:
     """
     @resume
-        Validates acceptance of messages with correct HMAC signatures.
+        Validates acceptance of messages containing correct HMAC signatures.
 
     @scope
-        - correct HMAC
-        - deterministic HMAC_OK
-        - audit logging
+        - correct HMAC value
+        - deterministic HMAC_OK signalling
+        - audit logging of accepted messages
 
     @ensures
-        Gateway proceeds to freshness validation.
+        The gateway proceeds to freshness validation and records MESSAGE_ACCEPTED.
     """
 
     @pytest.mark.asyncio
@@ -85,10 +85,7 @@ class TestIntegrationHMACValid:
         keys_path.write_text(json.dumps({"dev_key": "aa" * 32}))
         key = bytes.fromhex("aa" * 32)
 
-        freshness_path = Path(config["freshness"]["counter_file"])
-        freshness_path.write_text(json.dumps({"counter": 10}))
-
-        payload = {"id": 1, "counter": 10, "msg": "valid_hmac"}
+        payload = {"id": 1, "counter": 1, "msg": "valid_hmac"}
         mac = algo.sign(payload, key)
         msg = {**payload, "hmac": mac}
 
@@ -102,9 +99,8 @@ class TestIntegrationHMACValid:
         audit_path = Path(config["audit"]["path"])
         events = [json.loads(line) for line in audit_path.read_text().splitlines()]
 
-        # Nu trebuie să existe HMAC_FAIL
+        # No HMAC_FAIL should appear
         assert not any(e["event"] == "HMAC_FAIL" for e in events)
 
-        # Ultimul eveniment trebuie să fie MESSAGE_ACCEPTED
+        # Last event must be MESSAGE_ACCEPTED
         assert events[-1]["event"] == "MESSAGE_ACCEPTED"
-

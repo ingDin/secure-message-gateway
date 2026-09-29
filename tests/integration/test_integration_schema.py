@@ -1,7 +1,7 @@
 """
-@resume
-    Integration module validating strict JSON schema enforcement across all
-    structural validation branches of the gateway.
+@summary
+Integration module validating strict JSON schema enforcement across all
+structural validation branches of the secure-message-gateway.
 
 @scope
     - missing required fields
@@ -12,7 +12,7 @@
 
 @ensures
     Only structurally valid messages proceed to cryptographic and freshness
-    subsystems, preserving pipeline integrity.
+    subsystems, preserving full pipeline integrity.
 """
 
 import pytest
@@ -28,11 +28,11 @@ class TestIntegrationSchemaInvalid:
 
     @scope
         - missing hmac
-        - deterministic SCHEMA_FAIL
-        - audit logging
+        - deterministic SCHEMA_FAIL signalling
+        - audit logging of schema violations
 
     @ensures
-        Gateway halts before crypto/freshness execution.
+        The gateway halts before cryptographic and freshness execution.
     """
 
     @pytest.mark.asyncio
@@ -66,12 +66,12 @@ class TestIntegrationSchemaAdditionalProperties:
         Validates rejection of messages containing unexpected fields.
 
     @scope
-        - additionalProperties=False
-        - deterministic SCHEMA_FAIL
-        - audit logging
+        - additionalProperties=False enforcement
+        - deterministic SCHEMA_FAIL signalling
+        - audit logging of schema violations
 
     @ensures
-        Gateway enforces strict schema contract.
+        The gateway enforces a strict schema contract and rejects malformed input.
     """
 
     @pytest.mark.asyncio
@@ -110,10 +110,11 @@ class TestIntegrationSchemaWrongTypes:
         - counter wrong type
         - msg wrong type
         - hmac wrong type
-        - deterministic SCHEMA_FAIL
+        - deterministic SCHEMA_FAIL signalling
 
     @ensures
-        Gateway prevents malformed data from entering security subsystems.
+        The gateway prevents malformed data from entering security‑critical
+        subsystems.
     """
 
     @pytest.mark.asyncio

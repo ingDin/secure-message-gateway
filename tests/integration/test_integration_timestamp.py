@@ -1,13 +1,14 @@
 """
 @summary
-Integration tests for deterministic timestamp behavior in the secure-message-gateway.
+Integration tests validating deterministic timestamp behaviour across the
+secure-message-gateway pipeline.
 
-These tests validate:
+These tests ensure:
     - audit events use the injected clock deterministically
     - rotation events use the same deterministic timestamp source
     - timestamps are normalized (Z == +00:00)
 
-All timestamps must come from the injected clock (freezegun).
+All timestamps must originate exclusively from the injected clock (freezegun).
 """
 
 import pytest
@@ -35,7 +36,7 @@ def normalize(ts: str) -> str:
 class TestIntegrationAuditTimestamp:
     """
     @resume
-        Validates deterministic timestamps in audit logging.
+        Validates deterministic timestamps produced by audit logging.
 
     @scope
         - freeze time
@@ -43,7 +44,7 @@ class TestIntegrationAuditTimestamp:
         - audit entry timestamp must match frozen time (normalized)
 
     @ensures
-        Audit logging is deterministic and testable.
+        Audit logging remains fully deterministic and testable.
     """
 
     @pytest.mark.asyncio
@@ -60,7 +61,7 @@ class TestIntegrationAuditTimestamp:
             keys_path.write_text(json.dumps({"dev_key": "aa" * 32}))
             key = bytes.fromhex("aa" * 32)
 
-            payload = {"id": 1, "counter": 1, "msg": "hello"}
+            payload = {"id": 1, "counter": 0, "msg": "hello"}
             mac = algo.sign(payload, key)
             msg = {**payload, "hmac": mac}
 
@@ -90,7 +91,7 @@ class TestIntegrationRotationTimestamp:
         - rotation event timestamp must match frozen time (normalized)
 
     @ensures
-        Key rotation events are fully deterministic and auditable.
+        Key rotation events remain fully deterministic and auditable.
     """
 
     @pytest.mark.asyncio
@@ -109,7 +110,7 @@ class TestIntegrationRotationTimestamp:
             keys_path.write_text(json.dumps({"dev_key": "00" * 32}))
             key = bytes.fromhex("00" * 32)
 
-            payload = {"id": 1, "counter": 1, "msg": "init"}
+            payload = {"id": 1, "counter": 0, "msg": "init"}
             mac = algo.sign(payload, key)
             msg = {**payload, "hmac": mac}
 

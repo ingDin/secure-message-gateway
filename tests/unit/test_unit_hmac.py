@@ -1,8 +1,9 @@
 """
+@summary
 Unit test suite for HMACAlgorithm.
 
 @resume
-    Validates the foundational behavior of the HMAC-based cryptographic
+    Validates the foundational behaviour of the HMAC-based cryptographic
     subsystem, ensuring deterministic key generation, strict validation of key
     material, and correct signing/verification semantics in both synchronous
     and asynchronous execution paths.
@@ -15,7 +16,7 @@ Unit test suite for HMACAlgorithm.
 
 @ensures
     Upstream gateway components relying on HMACAlgorithm receive predictable,
-    stable, and contract-respecting behavior.
+    stable, and contract-respecting behaviour.
 """
 
 import pytest
@@ -23,7 +24,7 @@ import os
 import json
 
 from secure_gateway.hmac import HMACAlgorithm
-from secure_gateway.exceptions import HMACError
+from secure_gateway.exceptions import KeyError, HMACError
 
 
 # ============================================================================
@@ -40,7 +41,7 @@ def crypto_unit_config_factory(tmp_path):
     @scope
         - deterministic configuration of crypto parameters
         - isolated key file paths
-        - reproducible key-loading behavior
+        - reproducible key-loading behaviour
         - full control over algorithm constraints
 
     @returns
@@ -80,7 +81,7 @@ def hmac_algo():
     @scope
         - ensures no shared state
         - avoids cached keys
-        - guarantees deterministic behavior across tests
+        - guarantees deterministic behaviour across tests
 
     @returns
         A clean HMACAlgorithm instance.
@@ -96,7 +97,7 @@ def hex_key_bytes():
 
     @scope
         - realistic entropy
-        - deterministic test behavior
+        - deterministic test behaviour
 
     @returns
         A bytearray representing secure key material.
@@ -127,7 +128,7 @@ class TestHMACAlgorithm:
         - secure key generation
         - strict async key-loading validation
         - deterministic signing and verification (sync + async)
-        - domain-specific error signaling
+        - domain-specific error signalling
 
     @ensures
         The HMAC subsystem behaves predictably and supports the cryptographic
@@ -168,34 +169,38 @@ class TestHMACAlgorithm:
     # ----------------------------------------------------------------------
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "keys_content,config_override,expected_error",
+        "keys_content,config_override,expected_exception,expected_message",
         [
-            ({"prod_key": VALID_KEY}, {}, "Missing key"),
-            ({"dev_key": INVALID_HEX}, {}, "hex-encoded"),
-            ({"dev_key": SHORT_KEY}, {"min_key_length": 4}, "too short"),
-            ({"dev_key": VALID_KEY}, {"allowed_algorithms": ["SHA1"]}, "not allowed"),
+            # Missing key
+            ({"prod_key": VALID_KEY}, {}, KeyError, "Missing key"),
+
+            # Invalid hex
+            ({"dev_key": INVALID_HEX}, {}, KeyError, "must be hex-encoded"),
+
+            # Too short
+            ({"dev_key": SHORT_KEY}, {"min_key_length": 4}, HMACError, "too short"),
+
+            # Algorithm not allowed
+            ({"dev_key": VALID_KEY}, {"allowed_algorithms": ["SHA1"]}, HMACError, "not allowed"),
         ]
     )
     async def test_load_key_async_failures(
         self, hmac_algo, json_file_factory, crypto_unit_config_factory,
-        keys_content, config_override, expected_error
+        keys_content, config_override, expected_exception, expected_message
     ):
         """
         @resume
             Validates deterministic rejection of invalid key configurations.
 
         @scope
-            - missing key detection
-            - hex decoding validation
-            - minimum key length enforcement
-            - allowed algorithm enforcement
-
-        @raises
-            HMACError
+            - missing key detection (KeyError)
+            - hex decoding validation (KeyError)
+            - minimum key length enforcement (HMACError)
+            - allowed algorithm enforcement (HMACError)
 
         @ensures
-            load_key_async signals domain-specific errors for invalid key
-            configurations.
+            load_key_async raises domain‑specific exceptions with predictable
+            error messages for all invalid key configurations.
         """
 
         # --- Arrange ---
@@ -203,10 +208,10 @@ class TestHMACAlgorithm:
         config = crypto_unit_config_factory(config_override)
 
         # --- Act / Assert ---
-        with pytest.raises(HMACError) as exc:
+        with pytest.raises(expected_exception) as exc:
             await hmac_algo.load_key_async(config)
 
-        assert expected_error in str(exc.value)
+        assert expected_message in str(exc.value)
 
     # ----------------------------------------------------------------------
     # Async key loading — success
@@ -246,7 +251,7 @@ class TestHMACAlgorithm:
     def test_sign(self, hmac_algo, hex_key_bytes):
         """
         @resume
-            Validates synchronous signing behavior.
+            Validates synchronous signing behaviour.
 
         @scope
             - SHA256 digest correctness
@@ -297,7 +302,7 @@ class TestHMACAlgorithm:
     def test_verify_fail(self, hmac_algo, hex_key_bytes):
         """
         @resume
-            Validates deterministic failure behavior for tampered MACs.
+            Validates deterministic failure behaviour for tampered MACs.
 
         @scope
             - MAC mismatch detection
@@ -324,7 +329,7 @@ class TestHMACAlgorithm:
     async def test_sign_async(self, hmac_algo, hex_key_bytes):
         """
         @resume
-            Validates asynchronous signing behavior.
+            Validates asynchronous signing behaviour.
 
         @scope
             - SHA256 digest correctness
@@ -335,7 +340,7 @@ class TestHMACAlgorithm:
             A valid MAC hex digest.
 
         @ensures
-            sign_async produces deterministic MACs identical to sync behavior.
+            sign_async produces deterministic MACs identical to sync behaviour.
         """
 
         # --- Arrange ---

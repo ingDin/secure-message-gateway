@@ -7,10 +7,11 @@ Shared pytest fixtures for the secure-message-gateway test suite.
 
 @scope
     - consistent creation of temporary JSON files across all test modules
-    - isolated, reproducible filesystem behavior via pytest's tmp_path fixture
+    - isolated, reproducible filesystem behaviour via pytest's tmp_path fixture
     - simplified test authoring through centralized JSON file generation
-    - reliable encoding and serialization semantics suitable for cryptographic,
-      freshness, and audit-related test scenarios
+    - reliable encoding and serialization semantics suitable for cryptographic
+      and freshness-related tests
+    - robust JSON handling required for audit-focused test scenarios
 
 @ensures
     These fixtures form foundational infrastructure for the gateway’s test
@@ -31,7 +32,7 @@ def json_file_factory(tmp_path):
     @scope
         - deterministic creation of structured JSON files
         - consistent UTF‑8 encoding across all modules
-        - reproducible filesystem behavior independent of environment
+        - reproducible filesystem behaviour independent of environment
         - simplified setup for tests requiring configuration, key material,
           freshness state, or audit log scaffolding
 

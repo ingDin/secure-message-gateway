@@ -2,7 +2,7 @@
 Unit test suite for SchemaValidator.
 
 @resume
-    Validates the correctness, stability, and failure behavior of the
+    Validates the correctness, stability, and failure behaviour of the
     schema‑validation subsystem responsible for enforcing structural, type,
     and constraint correctness of incoming gateway messages.
 
@@ -15,7 +15,7 @@ Unit test suite for SchemaValidator.
 
 @ensures
     Upstream gateway components relying on SchemaValidator receive predictable,
-    strict, and contract‑respecting behavior before any cryptographic or
+    strict, and contract‑respecting behaviour before any cryptographic or
     freshness logic is executed.
 """
 

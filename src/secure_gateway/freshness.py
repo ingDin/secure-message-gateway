@@ -165,7 +165,6 @@ class FreshnessManager:
         # 1. Bootstrap if needed
         if self.counter is None:
             await self.bootstrap_async(incoming)
-            return
 
         # 2. Validate rules
         self.validate_rules(incoming)

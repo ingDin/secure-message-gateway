@@ -2,14 +2,15 @@
 @summary
 Integration test suite for the secure-message-gateway freshness subsystem.
 
-These tests reflect the REAL behavior of FreshnessManager:
+These tests validate the REAL operational behaviour of FreshnessManager:
 
     - If freshness.json exists → bootstrap loads the stored counter.
-    - First message NEVER validates freshness rules.
-    - Second message validates increment relative to stored counter.
-    - Third message validates increment relative to updated counter.
+    - The first message NEVER validates freshness rules.
+    - The second message validates increment relative to the stored counter.
+    - The third message validates increment relative to the updated counter.
 
-All freshness violations must raise FRESHNESS_FAIL through gateway.process().
+All freshness violations must propagate deterministically as FRESHNESS_FAIL
+through gateway.process().
 """
 
 import pytest
@@ -38,6 +39,15 @@ class TestIntegrationFreshnessAbnormalIncrement:
     """
     @resume
         Validates abnormal increment (0) after bootstrap and one valid update.
+
+    @scope
+        - existing freshness.json
+        - bootstrap loads stored counter
+        - first update accepted
+        - second update with increment=0 rejected
+
+    @ensures
+        The gateway detects zero-increment progression and raises FRESHNESS_FAIL.
     """
 
     @pytest.mark.asyncio
@@ -71,7 +81,16 @@ class TestIntegrationFreshnessAbnormalIncrement:
 class TestIntegrationFreshnessReplay:
     """
     @resume
-        Validates replay detection (incoming < last).
+        Validates replay detection when incoming < last.
+
+    @scope
+        - existing freshness.json
+        - bootstrap loads stored counter
+        - first update accepted
+        - replay attempt rejected
+
+    @ensures
+        The gateway rejects stale counters and raises FRESHNESS_FAIL.
     """
 
     @pytest.mark.asyncio
@@ -105,7 +124,16 @@ class TestIntegrationFreshnessReplay:
 class TestIntegrationFreshnessDrift:
     """
     @resume
-        Validates drift rule (increment > max_drift).
+        Validates drift rule enforcement when increment exceeds max_drift.
+
+    @scope
+        - existing freshness.json
+        - bootstrap loads stored counter
+        - first update accepted
+        - drift violation rejected
+
+    @ensures
+        The gateway enforces drift constraints and raises FRESHNESS_FAIL.
     """
 
     @pytest.mark.asyncio
@@ -139,7 +167,16 @@ class TestIntegrationFreshnessDrift:
 class TestIntegrationFreshnessIncrementTooSmall:
     """
     @resume
-        Validates minimum increment rule.
+        Validates minimum increment rule enforcement.
+
+    @scope
+        - min_increment configured
+        - bootstrap loads stored counter
+        - first update accepted
+        - second update with increment < min_increment rejected
+
+    @ensures
+        The gateway enforces minimum increment constraints and raises FRESHNESS_FAIL.
     """
 
     @pytest.mark.asyncio
@@ -176,6 +213,16 @@ class TestIntegrationFreshnessIncrementTooLarge:
     """
     @resume
         Validates maximum increment rule when reject_out_of_range = true.
+
+    @scope
+        - max_increment configured
+        - reject_out_of_range enabled
+        - bootstrap loads stored counter
+        - first update accepted
+        - second update exceeding max_increment rejected
+
+    @ensures
+        The gateway enforces maximum increment constraints and raises FRESHNESS_FAIL.
     """
 
     @pytest.mark.asyncio

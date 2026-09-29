@@ -2,21 +2,21 @@
 Unit test suite for KeyFileStore.
 
 @resume
-    Validates the correctness, stability, and failure behavior of the
+    Validates the correctness, stability, and failure behaviour of the
     key-loading and key-writing subsystem responsible for reading and
     persisting cryptographic key material.
 
 @scope
     - valid JSON key file parsing
     - malformed or corrupted JSON handling
-    - missing file behavior
+    - missing file behaviour
     - I/O failure propagation during async load
     - correct JSON serialization during async write
     - I/O failure propagation during async write
 
 @ensures
     Upstream cryptographic components relying on KeyFileStore receive
-    predictable, safe, and contract-respecting behavior.
+    predictable, safe, and contract-respecting behaviour.
 """
 
 import pytest
@@ -25,7 +25,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from secure_gateway.key_loader import KeyFileStore
-from secure_gateway.exceptions import HMACError
+from secure_gateway.exceptions import KeyError
 
 
 # ============================================================================
@@ -48,7 +48,7 @@ class TestKeyFileStore:
 
     @scope
         - deterministic JSON parsing
-        - strict failure signaling for malformed or missing files
+        - strict failure signalling for malformed or missing files
         - reliable async persistence semantics
         - domain-specific error propagation
 
@@ -110,11 +110,11 @@ class TestKeyFileStore:
 
         @scope
             - malformed JSON detection
-            - missing file behavior
+            - missing file behaviour
             - I/O failure propagation
 
         @raises
-            HMACError
+            KeyError
 
         @ensures
             load_async signals domain-specific errors for all invalid load
@@ -130,12 +130,12 @@ class TestKeyFileStore:
 
         # --- Act / Assert ---
         if patch_target is None:
-            with pytest.raises(HMACError):
+            with pytest.raises(KeyError):
                 await KeyFileStore.load_async(path)
             return
 
         with patch(patch_target, side_effect=patch_effect):
-            with pytest.raises(HMACError):
+            with pytest.raises(KeyError):
                 await KeyFileStore.load_async(path)
 
     # ----------------------------------------------------------------------
@@ -152,7 +152,7 @@ class TestKeyFileStore:
             - reliable write semantics
 
         @returns
-            freshness.json updated with the new key material.
+            keys.json updated with the new key material.
 
         @ensures
             write_async persists JSON content exactly as provided.
@@ -174,15 +174,15 @@ class TestKeyFileStore:
     async def test_write_async_io_error(self):
         """
         @resume
-            Validates deterministic failure behavior when async write operations
+            Validates deterministic failure behaviour when async write operations
             encounter underlying I/O errors.
 
         @scope
             - I/O failure propagation
-            - domain-specific error signaling
+            - domain-specific error signalling
 
         @raises
-            HMACError
+            KeyError
 
         @ensures
             write_async never silently corrupts or partially writes key material.
@@ -193,5 +193,5 @@ class TestKeyFileStore:
 
         # --- Act / Assert ---
         with patch(PATCH_IO, side_effect=OSError("io-fail")):
-            with pytest.raises(HMACError):
+            with pytest.raises(KeyError):
                 await KeyFileStore.write_async(Path("x.json"), VALID_KEYS)

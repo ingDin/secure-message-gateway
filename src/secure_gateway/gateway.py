@@ -1,6 +1,6 @@
 """
 @summary
-Asynchronous message‑processing gateway responsible for validating, authenticating,
+Asynchronous message-processing gateway responsible for validating, authenticating,
 and auditing incoming messages. The gateway coordinates all security subsystems:
 
 - schema validation
@@ -32,6 +32,7 @@ from secure_gateway.exceptions import (
     SchemaError,
     HMACError,
     FreshnessError,
+    KeyError,
 )
 
 ERROR_MAP = {
@@ -45,12 +46,12 @@ ERROR_MAP = {
 class GatewayAsync:
     """
     @summary
-    Asynchronous security gateway implementing the full message‑processing pipeline.
+    Asynchronous security gateway implementing the full message-processing pipeline.
 
     Pipeline stages:
         1. Schema validation
         2. Key rotation (if required)
-        3. Crypto key loading
+        3. Crypto key loading (with automatic rotation on key failure)
         4. HMAC verification
         5. Freshness validation
         6. Audit logging
@@ -83,50 +84,41 @@ class GatewayAsync:
         # Key manager
         self.key_manager = KeyManager(config)
 
+        # Key name moved here
+        self.key_name = f"{config['environment']}_key"
+
+        # Base payload for rotation audit logs
+        self.rotation_payload_base = {
+            "key_name": self.key_name,
+            "algorithm": self.algorithm.name,
+        }
+
     async def process(self, raw: Dict[str, Any]) -> GatewayResponse:
         """
         @summary
         Process an incoming message through the full security pipeline.
-
-        @parameters
-        raw : dict
-            Incoming message containing:
-            - id
-            - counter
-            - msg
-            - hmac
-
-        @returns
-        GatewayResponse
-            Structured response indicating success or deterministic failure.
-
-        @raises
-        SchemaError
-            If message structure or required fields are invalid.
-        HMACError
-            If signature verification fails.
-        FreshnessError
-            If monotonic counter freshness rules are violated.
-        GatewayError
-            For any other deterministic gateway-level failure.
-
-        @examples
-        >>> response = await gateway.process({
-        ...     "id": "abc",
-        ...     "counter": 42,
-        ...     "msg": "hello",
-        ...     "hmac": "deadbeef"
-        ... })
         """
         try:
             # 1. Schema validation
             SchemaValidator.validate(raw)
 
-            # 2. Key rotation (if needed)
+            # 2. Interval-based rotation
             await self._check_key_rotation()
 
-            # 3. Load crypto key
-            key = await self.algorithm.load_key_async(self.config)
+            # 3. Load crypto key with automatic rotation on key failure
+            try:
+                key = await self.algorithm.load_key_async(self.config)
+            except KeyError:
+                # rotation triggered by invalid/missing/corrupted key material
+                await self.key_manager.rotate_async()
+
+                rotation_payload = {
+                    **self.rotation_payload_base,
+                    "reason": "invalid_key_rotation",
+                }
+                await self.audit.log_event("ROTATION", rotation_payload)
+
+                key = await self.algorithm.load_key_async(self.config)
 
             # 4. HMAC verification
             payload = {
@@ -147,31 +139,20 @@ class GatewayAsync:
         except Exception as exc:
             error_type = next(
                 (code for exc_class, code in ERROR_MAP.items() if isinstance(exc, exc_class)),
-                "UNKNOWN_ERROR"
+                "UNKNOWN_ERROR",
             )
 
             await self.audit.log_event(error_type, {"error": str(exc)})
-
             return GatewayResponse(status="error", reason=error_type)
 
     async def _check_key_rotation(self) -> None:
         """
         @summary
         Determine whether cryptographic key rotation is required and perform
-        rotation if necessary.
-
-        @returns
-        None
-
-        @raises
-        GatewayError
-            If rotation fails or key archival cannot be read.
-
-        @examples
-        >>> await gateway._check_key_rotation()
+        rotation if necessary, based on the configured rotation interval and
+        existing key archive.
         """
         cfg = self.config["crypto"]
-        key_name = f"{self.config['environment']}_key"
 
         if not cfg["rotation_required"]:
             return
@@ -187,20 +168,21 @@ class GatewayAsync:
                 timestamp = last_key.split("_archived_")[-1]
                 last_rotation = datetime.fromisoformat(timestamp)
 
-        rotation_payload = {
-            "key_name": key_name,
-            "algorithm": self.algorithm.name,
-        }
-
         # First rotation
         if last_rotation is None:
             await self.key_manager.rotate_async()
-            rotation_payload["reason"] = "first_rotation"
+            rotation_payload = {
+                **self.rotation_payload_base,
+                "reason": "first_rotation",
+            }
             await self.audit.log_event("ROTATION", rotation_payload)
             return
 
         # Interval-based rotation
         if KeyManager.rotation_needed(self.config, last_rotation):
             await self.key_manager.rotate_async()
-            rotation_payload["reason"] = "rotation_interval_expired"
+            rotation_payload = {
+                **self.rotation_payload_base,
+                "reason": "rotation_interval_expired",
+            }
             await self.audit.log_event("ROTATION", rotation_payload)

@@ -4,12 +4,16 @@ cryptography==42.0.5
 # JSON validation (mandatory)
 jsonschema==4.23.0
 
+# Async file I/O (required by key_loader, freshness, logger)
+aiofiles==23.1.0
+
 # Logging
 python-json-logger==2.0.7
 
 # Testing
 pytest==8.3.2
 pytest-cov==5.0.0
+pytest-asyncio==0.23.5
 
 # Linting & static analysis
 ruff==0.6.8

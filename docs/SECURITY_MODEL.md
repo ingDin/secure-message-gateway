@@ -5,7 +5,7 @@ The security model outlines the core guarantees that make the gateway secure, de
 
 ## 1. Overview
 
-The secure-message-gateway is designed for safety‑critical and audit‑driven environments where **message integrity**, **freshness**, and **deterministic behavior** are mandatory.
+The secure-message-gateway is designed for safety‑critical and audit‑driven environments where **message integrity**, **freshness**, and **deterministic behaviour** are mandatory.
 
 The security model is built around:
 
@@ -117,7 +117,7 @@ Rotation guarantees:
 ### 6.3 Security Guarantees
 
 - Prevents replay attacks and uncontrolled counter drift.  
-- Ensures stateful behavior remains predictable and auditable.
+- Ensures stateful behaviour remains predictable and auditable.
 
 ---
 
@@ -127,7 +127,7 @@ Rotation guarantees:
 
 - Each security‑relevant event is recorded as a JSON line in `audit.log`.  
 - Events include: `MESSAGE_ACCEPTED`, `SCHEMA_FAIL`, `HMAC_FAIL`, `FRESHNESS_FAIL`, `ROTATION`.  
-- Behavior is strictly append‑only; ordering is deterministic and validated in tests.
+- behaviour is strictly append‑only; ordering is deterministic and validated in tests.
 
 ### 7.2 Timestamp Determinism
 
@@ -159,7 +159,7 @@ Gateway responses use:
 
 No generic or ambiguous errors; each failure is domain‑specific.
 
-### 8.2 Deterministic Behavior
+### 8.2 Deterministic behaviour
 
 - Identical valid messages → identical responses and audit entries.  
 - Failure paths are stable and reproducible.  
@@ -176,6 +176,6 @@ The secure-message-gateway’s security model is built on:
 - **freshness enforcement and replay protection**  
 - **append‑only, ordered, timestamp‑deterministic audit logging**  
 - **explicit, domain‑specific error signaling**  
-- **fail‑fast, deterministic pipeline behavior**
+- **fail‑fast, deterministic pipeline behaviour**
 
 Together, these guarantees make the gateway suitable for **safety‑critical, industrial, and audit‑driven deployments** where correctness, observability, and determinism are non‑negotiable.
