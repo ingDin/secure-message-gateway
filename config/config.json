@@ -20,7 +20,7 @@
 
   "freshness": {
     "counter_file": "config/freshness.json",
-    "initial_counter": 20,
+    "initial_counter": 0,
     "reset_on_start": false,
 
     "min_increment": 1,
