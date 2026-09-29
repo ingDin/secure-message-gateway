@@ -179,3 +179,4 @@ The secure-message-gateway’s security model is built on:
 - **fail‑fast, deterministic pipeline behaviour**
 
 Together, these guarantees make the gateway suitable for **safety‑critical, industrial, and audit‑driven deployments** where correctness, observability, and determinism are non‑negotiable.
+``

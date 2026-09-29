@@ -1,436 +1,264 @@
-
-
-```md
-                                   ╔════════════════════════════════════╗
-                                   ║      SMG-CORE: CRYPTO FABRIC       ║
-                                   ╠════════════════════════════════════╣
-                                   ║  • SCHEMA VALIDATION UNIT          ║
-                                   ║  • KEY ROTATION CONTROLLER         ║
-                                   ║  • HMAC-SHA256 COMPUTE ENGINE      ║
-                                   ║  • MONOTONIC COUNTER (ANTI-REPLAY) ║
-                                   ║  • AUDIT TRACE OUTPUT              ║
-                                   ╚════════════════════════════════════╝
-
-                               ⇣ VERIFIED • INTEGRITY-PROTECTED • REPLAY-SAFE ⇣
-
-                                    SECURE MESSAGE GATEWAY — SMG‑CORE v1
-                           Deterministic Crypto • Monotonic Counter • Full Audit Trail
-```
 <div align="center">
+<pre>
+╔════════════════════════════════════╗
+║      SMG-CORE: CRYPTO FABRIC       ║
+╠════════════════════════════════════╣
+║  • SCHEMA VALIDATION UNIT          ║
+║  • KEY ROTATION CONTROLLER         ║
+║  • HMAC-SHA256 COMPUTE ENGINE      ║
+║  • MONOTONIC COUNTER (ANTI-REPLAY) ║
+║  • AUDIT TRACE OUTPUT              ║
+╚════════════════════════════════════╝
 
-<!-- BADGES CENTERED -->
-![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)
-![Asyncio](https://img.shields.io/badge/Asyncio-Ready-green.svg)
-![Security](https://img.shields.io/badge/Security-HMAC%20%2B%20Freshness-critical.svg)
-![Coverage](https://img.shields.io/badge/pytest-Full%20Coverage-brightgreen.svg)
-![Architecture](https://img.shields.io/badge/Architecture-Clean%20Design-blue.svg)
+⇣ VERIFIED • INTEGRITY-PROTECTED • REPLAY-SAFE ⇣
+
+SECURE MESSAGE GATEWAY — SMG‑CORE v1
+Deterministic Crypto • Monotonic Counter • Full Audit Trail
+</pre>
+
+[![Tests](https://img.shields.io/badge/Tests-GitHub%20Actions-blue.svg)](https://github.com/ingDin/secure-message-gateway/actions)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/ingDin/secure-message-gateway?tab=MIT-1-ov-file)
 
 </div>
 
 ---
 
-## ⚡Quickstart
+## 🔐 What is Secure Message Gateway?
+
+**Secure Message Gateway** is a minimal, extensible Python security layer designed for systems that require:
+
+- **Message integrity** via HMAC  
+- **Freshness protection** (anti‑replay counters)  
+- **Async key loading & rotation**  
+- **Audit logging** for every operation  
+- **Strict JSON schema validation**  
+- **Full test coverage** (unit, integration, acceptance)
+
+It is built for **safety‑critical environments**, embedded systems, and distributed architectures where message trust is mandatory.
+
+---
+
+## 📦 Installation
+
+To set up the secure-message-gateway in a clean, isolated environment:
 
 ```bash
-git clone ...
-cd secure-message-gateway
-python src/main.py
+pip install -r requirements.txt
+pip install -e .
+python -m venv .venv
 ```
 
----
+This installs the gateway package and exposes all core subsystems:
 
-## 🔥 Why This Exists
-
-Most embedded systems still exchange raw PDUs with **zero cryptographic guarantees**, **zero freshness protection**, and **zero auditability**.  
-That’s a huge attack surface — replay attacks, tampered messages, silent failures.
-
-`secure-message-gateway` fixes this with a **deterministic, cryptographically‑verified, fully‑audited message pipeline** designed for real‑world, safety‑critical environments.
-
-It exists because developers need:
-
-- 🔐 **HMAC‑SHA256 integrity**  
-- 🛡️ **Replay‑proof freshness counters**  
-- 📏 **Strict schema validation**  
-- ⚠️ **Predictable error taxonomy**  
-- 📝 **Structured audit logging**  
-- 🧪 **Full test coverage (unit + integration + BDD)**  
-
-Built for **embedded**, **industrial**, **IoT**, **robotics**, and **secure messaging** systems that demand trust.
+- HMAC engine (cryptographic integrity)
+- Freshness Manager (monotonic counter + replay protection)
+- Key Loader & Rotation (key lifecycle)
+- Audit Logger (append‑only JSON-lines)
+- GatewayAsync pipeline (deterministic orchestration)
 
 ---
 
-# 🚀 Overview
+## 🚀 Get Started
 
-`secure-message-gateway` is an asynchronous, deterministic message‑validation pipeline
-designed for embedded, industrial, IoT, and robotics systems requiring strict
-integrity guarantees, anti‑replay protection, and full auditability.
+Before running the gateway with `python src/main`, you must configure three fields that directly affect how the freshness counter behaves at startup:
 
-The gateway processes each message through a 7‑stage security pipeline:
+- `initial_counter`
+- `reset_on_start`
+- `counter_file`
 
-1. Schema Validation  
-2. Key Rotation Check  
-3. Key Loading  
-4. HMAC Verification  
-5. Freshness Validation  
-6. Audit Logging  
-7. Structured Response  
-
-Core components include: SchemaValidator, AlgorithmRegistry, HMACAlgorithm,
-KeyManager, KeyFileStore, FreshnessManager, AuditLogger, and GatewayResponse.
-
-All subsystems are modular, testable, cryptographically agnostic, and fully
-asynchronous.
+These determine how the gateway initializes and validates the monotonic counter for the first and subsequent messages.
 
 ---
 
-# 🔐 Cryptographic Backend (HMACAlgorithm)
+## 🔄 Freshness Counter Basics
 
-The HMAC-SHA256 backend provides:
+The freshness subsystem stores its monotonic counter in:
 
-- secure random key generation
-- asynchronous key loading from `keys.json`
-- minimum key length enforcement
-- algorithm allow‑list validation
-- deterministic signing (sorted JSON payload)
-- constant‑time verification (`hmac.compare_digest`)
-- synchronous + asynchronous variants for CPU-bound operations
+`config/freshness.json`
 
-Deterministic signing ensures reproducible test vectors and predictable behavior.
+At startup, the gateway decides which counter value to use based on:
 
----
+- the config (`initial_counter`)
+- the stored file (`freshness.json`)
+- the reset policy (`reset_on_start`)
 
-# 🔑 Key Management (KeyManager + KeyFileStore)
-
-## KeyManager
-Enterprise-grade key lifecycle management:
-- interval-based key rotation
-- timestamped archival in `keys_archive.json`
-- new key generation via AlgorithmRegistry
-- atomic writes to `keys.json`
-- audit events for every rotation
-
-Archive naming format:
-`<env>_key_archived_<ISO8601 timestamp>`
-
-## KeyFileStore
-Asynchronous JSON loader/writer for:
-- `keys.json`
-- `keys_archive.json`
-
-Provides safe, non-blocking file I/O with structured error handling.
+This directly affects the behaviour of `python src/main`.
 
 ---
 
-# 🕒 Freshness & Anti‑Replay (FreshnessManager)
+## 🔍 Freshness Initialization Rules
 
-Configurable rules from `config.json`:
-- monotonic counter enforcement
-- minimum increment
-- maximum increment
-- maximum drift
-- reject_out_of_range flag
-
-Validation pipeline:
-1. Load last counter from `freshness.json`
-2. Compute increment
-3. Apply all freshness rules
-4. Persist updated counter asynchronously
-
-Replay attacks, drift violations, and abnormal increments raise `FreshnessError`.
+### 1. `initial_counter: N`
+This numeric value is used only when `freshness.json` does not exist or when `reset_on_start` is set to `true`.  
+If the file already exists and `reset_on_start` is `false`, the gateway will always load the stored counter instead of the configured value.
 
 ---
 
-# 📝 Audit Logging (AuditLogger)
+### 2. `initial_counter: "auto"`
+The `auto` mode provides adaptive behavior:
+- If `freshness.json` exists, the stored counter is loaded.
+- If the file is missing, the counter starts at `0`.
 
-AuditLogger writes structured JSON Lines entries:
-
-{
-  "timestamp": "2026-09-26T18:00:00Z",
-  "event": "HMAC_FAIL",
-  "payload": {"id": 42, "counter": 1001}
-}
-
-Features:
-- non-blocking asynchronous writes
-- one JSON object per line
-- UTC ISO8601 timestamps
-- strict JSON serializability
-- used for all success/failure events, including key rotations
+This mode is useful in production environments where the gateway should continue from the last known valid counter.
 
 ---
 
-
-# 📏 Schema Validation (SchemaValidator)
-
-Strict JSON Schema:
-
-    {
-      "id": integer >= 0,
-      "msg": string non-empty,
-      "counter": integer >= 0,
-      "hmac": string non-empty
-    }
-
-Rules:
-- all fields required
-- no additional properties allowed
-- raises SchemaError on any violation
-
-Schema validation is always the first step in the pipeline.
+### 3. `reset_on_start: true`
+When enabled, the gateway overwrites `freshness.json` at every startup.  
+The counter is reset to the value defined in `initial_counter` (numeric or `"auto"`).  
+This ensures deterministic behavior and is ideal for testing or controlled environments.
 
 ---
 
-# ⚠️ Error Taxonomy (exceptions.py)
+### 4. `reset_on_start: false`
+(This is the case in the current `config.json`.)
 
-Deterministic exception hierarchy:
-
-    GatewayError
-     ├── SchemaError
-     ├── HMACError
-     └── FreshnessError
-
-Mapped to gateway response codes:
-
-    SCHEMA_FAIL  
-    HMAC_FAIL  
-    FRESHNESS_FAIL  
-    GATEWAY_ERROR  
-    UNKNOWN_ERROR  
-
-All errors are logged via AuditLogger.
-
----
-
-# 📦 Gateway Response (GatewayResponse)
-
-Standardized DTO:
-
-    @dataclass
-    class GatewayResponse:
-        status: str        # "ok" | "error"
-        reason: str | None # error code
-
-Examples:
-- GatewayResponse(status="ok")
-- GatewayResponse(status="error", reason="HMAC_FAIL")
-
----
-
-# 🔍 Technical Keywords
-
-### Cryptography
-- HMAC-SHA256
-- deterministic signing
-- constant-time verification
-
-### Key Lifecycle
-- async key loading
-- rotation
-- archival
-
-### Security
-- freshness counters
-- anti-replay protection
-- schema validation
-- error taxonomy
-
-### Async Architecture
-- asyncio non-blocking I/O
-- JSON Lines audit logging
-- structured responses
-
-### Industrial Context
-- embedded messaging
-- secure PDU validation
+The gateway preserves the existing counter stored in `freshness.json`.  
+The `initial_counter` value is used only if the file does not exist.  
+This is the recommended behavior for production, where counter persistence is required.
 
 
 ---
 
-# 🔐 Security Guarantees
+## ▶️ Runtime Behaviour When Running `python src/main`
 
-### Message Integrity
-- deterministic HMAC-SHA256
-- constant-time verification
+The gateway applies freshness rules starting from the **first** processed message whenever a stored counter already exists in `freshness.json`.  
+Bootstrap (automatic acceptance of the first message) happens **only** when the counter file is missing.
 
-### Anti-Replay Protection
-- monotonic counter
-- increment rules
-- drift control
+### Startup sequence
+1. The gateway checks whether `freshness.json` exists.  
+2. If the file exists, the stored counter is loaded and freshness validation begins immediately.  
+3. The first incoming message must respect the increment rules:
+   - `min_increment = 1`
+   - `max_increment = 5`
+4. Any message whose counter does not fall within the allowed increment range results in `FRESHNESS_FAIL`.
 
-### Key Lifecycle Security
-- interval-based rotation
-- archival with timestamps
-- environment-scoped keys
+### Example timeline
+Stored counter = `37`  
+You run `python src/main`.
 
-### Input Validation
-- strict JSON Schema
-- no extra fields allowed
-
-### Auditability
-- JSON Lines
-- UTC timestamps
-- structured events
-
-### Deterministic Error Handling
-- stable error codes
-- full audit trail
+Gateway behaviour:
+- First message must be between **38–42**  
+- Any value outside this range → `FRESHNESS_FAIL`
 
 ---
 
-# 🧪 Testing Strategy
+## 📈 Runtime Execution and Audit Logging
 
-## Unit Tests
-- HMACAlgorithm
-- KeyManager
-- FreshnessManager
-- SchemaValidator
-- AuditLogger
+Running the gateway benchmark with:
 
-## Integration Tests
-- full pipeline execution
-- crypto + freshness + audit + rotation
-- fixture-based message injection
-- deterministic counter progression
+`python src/main.py`
 
-## BDD Scenarios
-- valid message → ok
-- invalid schema → SCHEMA_FAIL
-- wrong HMAC → HMAC_FAIL
-- replay → FRESHNESS_FAIL
-- rotation interval expired → ROTATION event
+executes the full processing pipeline and prints performance statistics to the console.  
+A typical output looks like:
 
-## Reproducible Test Vectors
-- sorted JSON payloads
-- deterministic HMAC
-- predictable counter progression
+- **Total messages processed:** 5000  
+- **Total time:** 14.0653 seconds  
+- **Throughput:** 355.48 messages/sec  
+
+This reflects the end‑to‑end processing speed of the gateway, including HMAC validation, freshness checks, rotation logic, and audit logging.
 
 ---
 
-# 🛡️ Threat Model
+## 📝 Audit Log Entries
 
-Protected against:
+All processed messages are recorded in `logs/audit.log`.  
+Each entry is stored as a single JSON line, making the log easy to parse, stream, or export.
 
-- Replay Attacks
-- Message Tampering
-- Partial Key Compromise
-- Input Injection
-- Silent Failures
+Example entries:
 
-All events are logged and auditable.
-
----
-
-# ⚡ Performance Characteristics
-
-### Async I/O
-- non-blocking key loading
-- non-blocking audit logging
-- non-blocking freshness persistence
-
-### CPU-bound crypto offloading
-- async executor for sign/verify
-
-### Deterministic JSON encoding
-- compact, sorted payloads
-
-### Throughput
-- hundreds to thousands of messages/sec depending on hardware
-
----
-
-# 🧱 Extensibility Hooks
-
-### Crypto Backends
-- implement Algorithm
-- register in AlgorithmRegistry
-
-### Key Management
-- custom rotation policies
-- custom archival strategies
-
-### Freshness Rules
-- extend config.json
-- extend FreshnessManager
-
-### Audit Logging
-- switch backend (file → syslog → Kafka)
-
-### Schema Validation
-- extend MESSAGE_SCHEMA
-
----
-
-# ✅ How to Run (Gateway + Tests)
-**Run the gateway (main entry point in src/main.py)**
-```bash
-python src/main.py
+```log 
+{"timestamp": "2026-09-29T21:03:38.850937+00:00", "event": "MESSAGE_ACCEPTED", "payload": {"id": 1, "counter": 1, "msg": "auto-msg-1"}}
+{"timestamp": "2026-09-29T21:03:38.860673+00:00", "event": "MESSAGE_ACCEPTED", "payload": {"id": 2, "counter": 2, "msg": "auto-msg-2"}}
 ```
 
-This will:
+Each log entry contains:
 
-- load config.json
-- initialize the full pipeline
-- start processing incoming messages (depending on your integration layer)
+- **timestamp** — precise UTC time of processing  
+- **event** — the gateway event type (e.g., `MESSAGE_ACCEPTED`)  
+- **payload** — message metadata including:
+  - `id` — message identifier  
+  - `counter` — freshness counter value  
+  - `msg` — message content  
 
-**Run all tests**
+This format ensures the audit log is fully machine‑readable and suitable for monitoring, replay, or compliance pipelines.
 
-**Unit + Integration**
+## 📌 Notes
 
-```bash
-pytest -q
-```
-
-**BDD (behave acceptance tests)**
-```bash
-behave
-```
-
-Specific test modules
-
-```bash
-pytest tests/unit/test_unit_hmac.py -q
-pytest tests/unit/test_unit_freshness.py -q
-pytest tests/unit/test_unit_gateway.py -q
-```
+- The gateway logs **every accepted message**, making it easy to track counter progression.  
+- The audit log grows line‑by‑line and can be exported or analyzed with standard tools (`jq`, Python, CSV exporters).  
+- The benchmark script is designed for high throughput testing and demonstrates the gateway’s performance under load.
 
 ---
 
-# 📁 Directory Structure
+## 🧪 Test Coverage Overview
 
-    src/
-      main.py
-      secure_gateway/
-        gateway_async.py
-        hmac.py
-        algorithm_base.py
-        algorithms.py
-        key_manager.py
-        key_loader.py
-        freshness.py
-        schema.py
-        logger.py
-        models.py
-        exceptions.py
-    
-    tests/
-      unit/
-      integration/
-      bdd/
-        features/
-        steps/
+The project currently includes **functional tests only**, implemented with `pytest` and organized into three categories:
+
+### 1. Unit Tests
+Unit tests validate individual components in isolation.  
+They ensure that core modules (HMAC validation, freshness logic, configuration parsing, audit logging, etc.) behave correctly without interacting with other subsystems.
+
+### 2. Integration Tests
+Integration tests verify that multiple components work correctly together.  
+These tests cover interactions such as:
+- HMAC + freshness validation
+- counter progression + audit logging
+- configuration + runtime behavior
+
+They confirm that the gateway behaves consistently when subsystems are combined.
+
+### 3. Acceptance Tests
+Acceptance tests validate the full message-processing pipeline from the perspective of a real user or system.  
+They check:
+- startup initialization
+- sequential message handling
+- correct counter increments
+- complete audit trail generation
+
+These tests ensure the gateway meets its functional requirements end‑to‑end.
 
 ---
 
-# 🧾 Summary
-This README provides a **full enterprise-level overview** of the gateway, including
-**architecture**, **crypto backend**, **key rotation**, **freshness rules**, **audit logging**,
-**error taxonomy**, **testing strategy**, **threat model**, **performance characteristics**,
-**extensibility hooks**, and **execution instructions**.
+## ▶️ Running the Test Suite
 
-The system is **fully modular**, **deterministic**, **auditable**, and suitable for
-**industrial-grade deployments**.
+All functional tests (unit, integration, acceptance) are executed with:
+
+`pytest tests/`
+
+---
+
+## ⚠️ Note on Performance Testing
+
+The project **does not include performance, load, stress, or concurrency tests**.  
+Only functional correctness is covered at this stage.
+
+---
+
+## 📚 Documentation
+
+**Architecture Overview**  
+[docs/ARHITECTURE.md](docs/ARHITECTURE.md)  
+High‑level system design, pipeline, and execution model.
+
+**Component Architecture**  
+[docs/COMPONENTS.md](docs/COMPONENTS.md)  
+Module responsibilities, interfaces, and interactions.
+
+**Security Model**  
+[docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md)  
+HMAC integrity, freshness protection, and audit guarantees.
+
+**Test Strategy**  
+[docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md)  
+Functional tests only: unit, integration, acceptance.
 
 
-## 📄 License
-This project is licensed under the MIT License.
-See the `LICENSE` file for details.
+---
+
+## 🔐 License & Responsible Use
+
+This project is distributed under the **MIT License**, a permissive open‑source license that allows reuse, modification, and redistribution with minimal restrictions.
+
+For full legal details, see the license here:  
+**[MIT License →](https://github.com/ingDin/secure-message-gateway/blob/main/LICENSE)**
