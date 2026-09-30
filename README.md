@@ -16,7 +16,7 @@ SECURE MESSAGE GATEWAY — SMG‑CORE v1
 Deterministic Crypto • Monotonic Counter • Full Audit Trail
 </pre>
 
-[![Tests](https://img.shields.io/badge/Tests-GitHub%20Actions-blue.svg)](https://github.com/ingDin/secure-message-gateway/actions)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](https://github.com/ingDin/secure-message-gateway/actions)
 [![License](https://img.shields.io/badge/License-MIT-red.svg)](https://github.com/ingDin/secure-message-gateway?tab=MIT-1-ov-file)
 [![Release v1.0.0](https://img.shields.io/badge/release-v1.0.0-green.svg)](https://github.com/ingDin/secure-message-gateway/releases/tag/v1.0.0)
 
