@@ -97,7 +97,7 @@ classDiagram
     GatewayAsync --> GatewayResponse : returns
 ```
 
-## 7. Summary
+## 4. Summary
 
 The gateway architecture provides a **deterministic**, **auditable**, and **modular**
 security pipeline suitable for **embedded**, **industrial**, and **safety-critical systems**.
