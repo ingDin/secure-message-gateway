@@ -61,18 +61,7 @@ This installs the gateway package and exposes all core subsystems:
 ---
 
 ## 🚀 Get Started
-
-Before running the gateway with `python src/main`, you must configure three fields that directly affect how the freshness counter behaves at startup:
-
-- `initial_counter`
-- `reset_on_start`
-- `counter_file`
-
-These determine how the gateway initializes and validates the monotonic counter for the first and subsequent messages.
-
----
-
-## 🔑 Key Material & Environment Binding
+### 🔑 Key Material & Environment Binding
 
 Before running the gateway, users must create a file named **`keys.json`** in the project directory. This file **must be created by the user** and populated with environment‑specific keys in **hexadecimal format**. All keys must be **32 bytes (64 hex characters)** because the gateway uses HMAC‑SHA256.
 
@@ -86,8 +75,7 @@ The required `keys.json` structure is:
 }
 ```
 
-🔧 Environment Selection
----
+### 🔧 Environment Selection
 
 The active key is selected based on the environment field inside `config.json`:
 ```json
@@ -120,62 +108,65 @@ At startup, the gateway decides which counter value to use based on:
 
 This directly affects the behaviour of `python src/main`.
 
----
 
 ## 🔍 Freshness Initialization Rules
 
-### 1. `initial_counter: N`
-This numeric value is used only when `freshness.json` does not exist or when `reset_on_start` is set to `true`.  
-If the file already exists and `reset_on_start` is `false`, the gateway will always load the stored counter instead of the configured value.
+The gateway enforces increment-based freshness validation as soon as a counter value exists, regardless of how that value was established (loaded or bootstrapped).
 
----
+### When freshness.json Exists
 
-### 2. `initial_counter: "auto"`
-The `auto` mode provides adaptive behavior:
-- If `freshness.json` exists, the stored counter is loaded.
-- If the file is missing, the counter starts at `0`.
+If `freshness.json` exists, the stored counter is loaded and the very first incoming message must respect the increment rules:
+- min_increment = 1
+- max_increment = 5
 
-This mode is useful in production environments where the gateway should continue from the last known valid counter.
+Any violation results in `FRESHNESS_FAIL`.
 
----
+### When freshness.json Does NOT Exist (Bootstrap)
 
-### 3. `reset_on_start: true`
-When enabled, the gateway overwrites `freshness.json` at every startup.  
-The counter is reset to the value defined in `initial_counter` (numeric or `"auto"`).  
-This ensures deterministic behavior and is ideal for testing or controlled environments.
+If the file does not exist:
+- `initial_counter = "auto"` → the first message defines the counter.
+- `initial_counter = <numeric>` → the counter is set from config.
 
----
+After bootstrap, increment rules apply immediately to the next message.
 
-### 4. `reset_on_start: false`
-(This is the case in the current `config.json`.)
+### When freshness.json Exists AND reset_on_start = true
 
-The gateway preserves the existing counter stored in `freshness.json`.  
-The `initial_counter` value is used only if the file does not exist.  
-This is the recommended behavior for production, where counter persistence is required.
+If `freshness.json` exists but `reset_on_start = true`, the file MUST be deleted at startup.
+After deletion, the gateway behaves exactly as if no counter file ever existed:
+- Bootstrap is triggered.
+- The initial counter is taken from config (`initial_counter = "auto"` or numeric).
+- After bootstrap, increment rules apply immediately.
 
+## Examples
 
----
+1. File Exists
 
-## ▶️ Runtime Behaviour When Running `python src/main`
+`freshness.json`:
 
-The gateway applies freshness rules starting from the **first** processed message whenever a stored counter already exists in `freshness.json`.  
-Bootstrap (automatic acceptance of the first message) happens **only** when the counter file is missing.
+```json
+{"counter": 37}
+```
 
-### Startup sequence
-1. The gateway checks whether `freshness.json` exists.  
-2. If the file exists, the stored counter is loaded and freshness validation begins immediately.  
-3. The first incoming message must respect the increment rules:
-   - `min_increment = 1`
-   - `max_increment = 5`
-4. Any message whose counter does not fall within the allowed increment range results in `FRESHNESS_FAIL`.
+The first incoming message must have a counter between 38 and 42.
+Otherwise → `FRESHNESS_FAIL`.
 
-### Example timeline
-Stored counter = `37`  
-You run `python src/main`.
+2. Bootstrap Case
 
-Gateway behaviour:
-- First message must be between **38–42**  
-- Any value outside this range → `FRESHNESS_FAIL`
+`config.json`:
+```json
+{
+  "initial_counter": "auto",
+  "min_increment": 1,
+  "max_increment": 5
+}
+```
+
+Message 1: incoming = 100 → bootstrap sets counter = 100  
+Message 2: must be between 101 and 105 → otherwise `FRESHNESS_FAIL`
+
+### Final Statement
+
+Freshness rules apply immediately after the counter is established — whether loaded from `freshness.json` or created via bootstrap.
 
 ---
 
@@ -185,8 +176,7 @@ Running the gateway benchmark with:
 
 `python src/main.py`
 
-executes the full processing pipeline and prints performance statistics to the console.  
-A typical output looks like:
+executes the full processing pipeline and prints performance statistics to the console. A typical output looks like:
 
 - **Total messages processed:** 5000  
 - **Total time:** 14.0653 seconds  
@@ -194,14 +184,12 @@ A typical output looks like:
 
 This reflects the end‑to‑end processing speed of the gateway, including HMAC validation, freshness checks, rotation logic, and audit logging.
 
----
-
-## 📝 Audit Log Entries
+### 📝 Audit Log Entries
 
 All processed messages are recorded in `logs/audit.log`.  
 Each entry is stored as a single JSON line, making the log easy to parse, stream, or export.
 
-### Example audit log entries
+### Example
 
 ```log 
 {"timestamp": "2026-09-29T21:03:38.850937+00:00", "event": "MESSAGE_ACCEPTED", "payload": {"id": 1, "counter": 1, "msg": "auto-msg-1"}}
