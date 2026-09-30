@@ -1,0 +1,112 @@
+name: Secure Gateway CI (Windows Only)
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+jobs:
+
+  # -------------------------------------------------
+  # 1. Unit Tests (Windows)
+  # -------------------------------------------------
+  unit-tests:
+    runs-on: windows-latest
+    name: Unit Tests (Windows)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"   # ⭐ pip caching
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+          pip install pytest freezegun
+
+      - name: Run unit tests
+        run: pytest tests/unit -q
+
+  # -------------------------------------------------
+  # 2. Integration Tests (Windows)
+  # -------------------------------------------------
+  integration-tests:
+    runs-on: windows-latest
+    name: Integration Tests (Windows)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"   # ⭐ pip caching
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+          pip install pytest freezegun
+
+      - name: Run integration tests
+        run: pytest tests/integration -q
+
+  # -------------------------------------------------
+  # 3. Acceptance Tests (Behave, Windows)
+  # -------------------------------------------------
+  acceptance-tests:
+    runs-on: windows-latest
+    name: Acceptance Tests (Behave, Windows)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"   # ⭐ pip caching
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .
+          pip install behave pytest freezegun
+
+      - name: Run Behave
+        run: python -m behave --no-capture
+
+  # -------------------------------------------------
+  # 4. Build Package (Windows) — separat
+  # -------------------------------------------------
+  build-package:
+    runs-on: windows-latest
+    name: Build Python Package (Windows)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"   # ⭐ pip caching
+
+      - name: Install build tools
+        run: |
+          pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/
