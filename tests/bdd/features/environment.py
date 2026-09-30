@@ -22,7 +22,7 @@ from secure_gateway.gateway import GatewayAsync
 
 
 def before_scenario(context, scenario):
-    context.tmp = Path.cwd() / "tmp_behave"
+    context.tmp = Path.cwd() / "tests/bdd/tmp_behave"
     context.tmp.mkdir(parents=True, exist_ok=True)
 
     keys_path = context.tmp / "keys.json"
