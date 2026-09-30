@@ -138,7 +138,7 @@ Rotation is atomic, archived, and logged first.
 
 ---
 
-### **KeyError Recovery (NEW)**
+### **KeyError Recovery**
 Corrupted key file triggers deterministic recovery:
 
 1. First valid message → accepted  
@@ -151,7 +151,7 @@ Guarantees: predictable recovery, safe rejection of stale signatures, acceptance
 
 ---
 
-### **Freshness Initial Counter Logic (NEW)**
+### **Freshness Initial Counter Logic**
 
 Integration tests validate all branches:
 

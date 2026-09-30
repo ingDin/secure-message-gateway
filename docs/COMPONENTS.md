@@ -48,9 +48,6 @@ Ensures incoming messages conform to the gateway’s structural contract.
 ### Public API
 - `SchemaValidator.validate(message: dict) -> None`
 
-### Internal API
-*(none — fully public validator)*
-
 ### Responsibilities
 - enforce required fields  
 - reject extra fields  
@@ -103,9 +100,6 @@ Defines unified interface for cryptographic backends and provides algorithm regi
 - `get(name: str) -> Algorithm`
 - `supports(name: str) -> bool`
 
-### Internal API
-*(none — registry is fully public)*
-
 ### Responsibilities
 - abstract crypto interface  
 - deterministic backend lookup  
@@ -142,9 +136,6 @@ Dedicated asynchronous loader/writer for key-related JSON files.
 ### Public API
 - `load_async(path: Path) -> Dict[str, Any]`
 - `write_async(path: Path, content: Dict[str, Any]) -> None`
-
-### Internal API
-*(none — both methods are public)*
 
 ### Responsibilities
 - async read/write of key files  
@@ -209,9 +200,6 @@ Defines structured exception types used across the gateway.
 - `FreshnessError`
 - `KeyError`
 
-### Internal API
-*(none — pure type definitions)*
-
 ### Responsibilities
 - deterministic error signaling  
 - stable hierarchy  
@@ -226,9 +214,6 @@ Defines the minimal, deterministic response object returned by the gateway.
 
 ### Public API
 - `GatewayResponse(status: str, reason: Optional[str])`
-
-### Internal API
-*(none — pure DTO)*
 
 ### Responsibilities
 - encapsulate success/failure  
