@@ -72,6 +72,40 @@ These determine how the gateway initializes and validates the monotonic counter 
 
 ---
 
+## 🔑 Key Material & Environment Binding
+
+Before running the gateway, users must create a file named **`keys.json`** in the project directory. This file **must be created by the user** and populated with environment‑specific keys in **hexadecimal format**. All keys must be **32 bytes (64 hex characters)** because the gateway uses HMAC‑SHA256.
+
+The required `keys.json` structure is:
+
+```json
+{
+  "dev_key":   "<64-hex-dev-key>",
+  "stage_key": "<64-hex-stage-key>",
+  "prod_key":  "<64-hex-prod-key>"
+}
+```
+
+🔧 Environment Selection
+---
+
+The active key is selected based on the environment field inside `config.json`:
+```json
+{
+  "environment": "dev"
+}
+```
+
+Valid values are:
+
+- `"dev"` → loads dev_key
+- `"stage"` → loads stage_key
+- `"prod"` → loads prod_key
+
+This mechanism ensures deterministic key selection, **strict environment separation**, and predictable behavior during validation and rotation.
+
+---
+
 ## 🔄 Freshness Counter Basics
 
 The freshness subsystem stores its monotonic counter in:
@@ -167,7 +201,7 @@ This reflects the end‑to‑end processing speed of the gateway, including HMAC
 All processed messages are recorded in `logs/audit.log`.  
 Each entry is stored as a single JSON line, making the log easy to parse, stream, or export.
 
-Example entries:
+### Example audit log entries
 
 ```log 
 {"timestamp": "2026-09-29T21:03:38.850937+00:00", "event": "MESSAGE_ACCEPTED", "payload": {"id": 1, "counter": 1, "msg": "auto-msg-1"}}
