@@ -3,93 +3,63 @@
 @summary
 Dashboard page for the Secure Message Gateway desktop application.
 
-This module implements the main monitoring interface, providing
-a visual overview of message processing metrics and security
-component status.
-
-The dashboard is responsible exclusively for presenting operational
-information. It does not execute message processing, perform
-cryptographic validation, or retrieve audit events directly.
-
-@architecture
-- Uses reusable StatCard components for metric presentation.
-- Organizes dashboard sections using Qt layouts.
-- Separates metric presentation from gateway business logic.
-- Exposes update_metrics() as a public interface for updating
-  accepted messages, rejected messages, and audit event counts.
-
-@security
-The dashboard must display only non-sensitive operational information.
-Cryptographic keys and other secret configuration values must never
-be presented through dashboard components.
-
-@notes
-Metric values are initially displayed as unavailable.
-They must be supplied by an application service or controller
-when gateway integration is implemented.
+Displays operational metrics, recent message activity and security
+component status. All information is supplied externally.
 """
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QHBoxLayout,
     QGridLayout,
     QLabel,
     QFrame,
+    QProgressBar,
 )
 
 from desktop_app.components.stat_card import StatCard
 
 
 class DashboardPage(QWidget):
-    """
-    @summary
-    Main monitoring page for the Secure Message Gateway application.
+    """Main monitoring page for the Secure Message Gateway."""
 
-    The dashboard provides a centralized presentation of message
-    processing statistics, validation success rate, audit activity,
-    and security component status.
+    STATUS_COLORS = {
+        "ready": "#10B981",
+        "active": "#10B981",
+        "responding": "#10B981",
+        "available": "#10B981",
+        "ok": "#10B981",
+        "passed": "#10B981",
 
-    All displayed information is supplied externally. The widget
-    does not directly interact with gateway internals.
+        "error": "#F87171",
+        "failed": "#F87171",
 
-    @parameters
-    parent : QWidget | None
-        Optional parent widget in the Qt object hierarchy.
+        "warning": "#FBBF24",
+        "pending": "#FBBF24",
+        "running": "#FBBF24",
 
-    @examples
-    >>> dashboard = DashboardPage()
-    >>> dashboard.update_metrics(
-    ...     accepted=100,
-    ...     rejected=5,
-    ...     audit_events=105,
-    ... )
-    """
+        "not initialized": "#94A3B8",
+        "not checked": "#94A3B8",
+        "not run": "#94A3B8",
+        "unknown": "#94A3B8",
+    }
 
-    def __init__(
-        self,
-        parent: QWidget | None = None,
-    ) -> None:
-        """
-        @summary
-        Initialize the dashboard and construct its visual sections.
-
-        Creates the page heading, metric cards, message activity
-        section, and security component status section.
-
-        @parameters
-        parent : QWidget | None
-            Optional parent widget in the Qt object hierarchy.
-
-        @returns
-        None
-        """
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
 
         self.setObjectName("page")
 
+        self._accepted = 0
+        self._rejected = 0
+
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(30, 26, 30, 30)
-        main_layout.setSpacing(22)
+        main_layout.setSpacing(20)
+
+        # --------------------------------------------------
+        # Heading
+        # --------------------------------------------------
 
         heading = QLabel("Gateway Overview")
         heading.setObjectName("pageTitle")
@@ -101,6 +71,10 @@ class DashboardPage(QWidget):
 
         main_layout.addWidget(heading)
         main_layout.addWidget(description)
+
+        # --------------------------------------------------
+        # Metric cards
+        # --------------------------------------------------
 
         cards_layout = QGridLayout()
         cards_layout.setSpacing(16)
@@ -132,49 +106,106 @@ class DashboardPage(QWidget):
 
         main_layout.addLayout(cards_layout)
 
+        # --------------------------------------------------
+        # Message activity
+        # --------------------------------------------------
+
         activity = QFrame()
         activity.setObjectName("contentCard")
 
         activity_layout = QVBoxLayout(activity)
         activity_layout.setContentsMargins(22, 20, 22, 20)
-        activity_layout.setSpacing(12)
+        activity_layout.setSpacing(14)
 
         activity_title = QLabel("Message Processing Activity")
         activity_title.setObjectName("cardHeading")
 
-        activity_description = QLabel(
-            "Processing metrics will appear here "
-            "after gateway integration."
+        self.total_label = QLabel("Total processed messages: 0")
+        self.total_label.setObjectName("cardSubtitle")
+
+        self.activity_description = QLabel(
+            "No messages have been processed yet."
         )
-        activity_description.setObjectName("cardSubtitle")
+        self.activity_description.setObjectName("cardSubtitle")
+
+        self.success_progress = QProgressBar()
+        self.success_progress.setObjectName("successProgress")
+        self.success_progress.setRange(0, 100)
+        self.success_progress.setValue(0)
+        self.success_progress.setTextVisible(False)
+        self.success_progress.setFixedHeight(9)
+
+        self.success_progress.setStyleSheet("""
+            QProgressBar {
+                background-color: #334155;
+                border: none;
+                border-radius: 4px;
+            }
+
+            QProgressBar::chunk {
+                background-color: #10B981;
+                border-radius: 4px;
+            }
+        """)
 
         activity_layout.addWidget(activity_title)
-        activity_layout.addWidget(activity_description)
-        activity_layout.addStretch()
+        activity_layout.addWidget(self.total_label)
+        activity_layout.addWidget(self.success_progress)
+        activity_layout.addWidget(self.activity_description)
 
-        main_layout.addWidget(activity, 1)
+        main_layout.addWidget(activity)
+
+        # --------------------------------------------------
+        # Security components
+        # --------------------------------------------------
 
         security = QFrame()
         security.setObjectName("contentCard")
 
         security_layout = QVBoxLayout(security)
-        security_layout.setContentsMargins(22, 18, 22, 18)
+        security_layout.setContentsMargins(22, 20, 22, 20)
+        security_layout.setSpacing(14)
 
         security_title = QLabel("Security Components")
         security_title.setObjectName("cardHeading")
 
-        security_status = QLabel(
-            "Gateway connection: Not initialized\n"
-            "HMAC verification: Awaiting gateway data\n"
-            "Freshness validation: Awaiting gateway data\n"
-            "Schema validation: Awaiting gateway data"
-        )
-        security_status.setObjectName("cardSubtitle")
-
         security_layout.addWidget(security_title)
-        security_layout.addWidget(security_status)
+
+        self.security_labels = {}
+
+        components = [
+            ("gateway", "Gateway Connection"),
+            ("hmac", "HMAC Verification"),
+            ("freshness", "Freshness Validation"),
+            ("schema", "Schema Validation"),
+        ]
+
+        for key, title in components:
+            row = QHBoxLayout()
+
+            name_label = QLabel(title)
+            name_label.setObjectName("cardSubtitle")
+
+            status_label = QLabel("Not checked")
+            status_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+            status_label.setStyleSheet(
+                "color: #94A3B8; font-weight: normal;"
+            )
+
+            row.addWidget(name_label)
+            row.addStretch()
+            row.addWidget(status_label)
+
+            security_layout.addLayout(row)
+
+            self.security_labels[key] = status_label
 
         main_layout.addWidget(security)
+        main_layout.addStretch()
+
+    # ======================================================
+    # Public update methods
+    # ======================================================
 
     def update_metrics(
         self,
@@ -182,35 +213,14 @@ class DashboardPage(QWidget):
         rejected: int,
         audit_events: int,
     ) -> None:
-        """
-        @summary
-        Update the dashboard with externally supplied gateway metrics.
+        """Update message processing metrics."""
 
-        Updates accepted message count, rejected message count,
-        audit event count, and calculated validation success rate.
+        if accepted < 0 or rejected < 0 or audit_events < 0:
+            raise ValueError("Metric values cannot be negative.")
 
-        @parameters
-        accepted : int
-            Number of successfully accepted messages.
-        rejected : int
-            Number of rejected messages.
-        audit_events : int
-            Total number of audit events.
+        self._accepted = accepted
+        self._rejected = rejected
 
-        @returns
-        None
-
-        @notes
-        The validation success rate is calculated as:
-
-            accepted / (accepted + rejected) * 100
-
-        When no messages have been processed, the success rate
-        is displayed as "N/A".
-
-        The method does not retrieve statistics directly from
-        the gateway or audit log.
-        """
         total = accepted + rejected
 
         success_rate = (
@@ -226,3 +236,57 @@ class DashboardPage(QWidget):
             f"{success_rate:.1f}%"
             if success_rate is not None else "N/A"
         )
+
+        self.total_label.setText(
+            f"Total processed messages: {total}"
+        )
+
+        self.success_progress.setValue(
+            round(success_rate)
+            if success_rate is not None else 0
+        )
+
+        if total == 0:
+            self.activity_description.setText(
+                "No messages have been processed yet."
+            )
+        else:
+            self.activity_description.setText(
+                f"{accepted} accepted  |  "
+                f"{rejected} rejected  |  "
+                f"{success_rate:.1f}% success rate"
+            )
+
+    def update_security_status(
+        self,
+        gateway: str = "Not checked",
+        hmac: str = "Not run",
+        freshness: str = "Not run",
+        schema: str = "Not run",
+    ) -> None:
+        """Update security component statuses."""
+
+        statuses = {
+            "gateway": gateway,
+            "hmac": hmac,
+            "freshness": freshness,
+            "schema": schema,
+        }
+
+        for key, status in statuses.items():
+            label = self.security_labels[key]
+            label.setText(status)
+
+            color = self.STATUS_COLORS.get(
+                status.strip().lower(),
+                "#94A3B8",
+            )
+
+            label.setStyleSheet(
+                f"color: {color}; font-weight: normal;"
+            )
+
+    def update_recent_activity(self, message: str) -> None:
+        """Update the activity description."""
+
+        self.activity_description.setText(message)

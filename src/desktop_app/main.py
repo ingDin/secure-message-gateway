@@ -72,7 +72,7 @@ def main() -> None:
 
     window = MainWindow()
     window.show()
-
+ 
     sys.exit(app.exec())
 
 

@@ -1,26 +1,18 @@
-
 """
 @summary
 Top navigation bar for the Secure Message Gateway desktop application.
 
-This module implements the application's horizontal header.
-It displays the title of the currently selected application section
-and a textual indicator representing the application status.
-
-The component provides a centralized presentation area for
-page context and high-level application status information.
+Displays the current page title and application status.
+Status information is supplied externally by the application layer.
 
 @architecture
-- Extends QFrame to provide an independent header component.
-- Uses QHBoxLayout for horizontal widget organization.
-- Exposes public methods for updating the page title and status.
-- Uses Qt object names for centralized QSS styling.
+This component belongs to the presentation layer.
+It is responsible only for displaying information and does not
+perform gateway initialization, connectivity checks, or health checks.
 
 @notes
-The top navigation bar is presentation-only.
-It does not perform gateway health checks or determine the actual
-operational state of security components.
-Status information must be supplied by the application layer.
+The application layer is responsible for updating the title and
+status through the public methods provided by this component.
 """
 
 from PyQt6.QtWidgets import (
@@ -33,21 +25,11 @@ from PyQt6.QtWidgets import (
 
 class TopBar(QFrame):
     """
-    @summary
-    Reusable application header displaying page context and status.
+    Application header displaying the current page title and system status.
 
-    The component contains a dynamic page title and a status label.
-    It allows the main window to update both elements without
-    directly manipulating the internal QLabel widgets.
-
-    @parameters
-    parent : QWidget | None
-        Optional parent widget in the Qt object hierarchy.
-
-    @examples
-    >>> topbar = TopBar()
-    >>> topbar.set_title("Dashboard")
-    >>> topbar.set_status("Gateway connected")
+    The component provides a consistent header across the desktop
+    application. It separates visual presentation from application
+    logic by receiving status updates externally.
     """
 
     def __init__(
@@ -55,63 +37,67 @@ class TopBar(QFrame):
         parent: QWidget | None = None,
     ) -> None:
         """
-        @summary
-        Initialize the top navigation bar and its visual components.
+        Initialize the application top navigation bar.
 
         @parameters
-        parent : QWidget | None
-            Optional parent widget in the Qt object hierarchy.
+        parent:
+            Optional parent widget in the Qt widget hierarchy.
 
         @returns
         None
         """
+
         super().__init__(parent)
 
         self.setObjectName("topbar")
         self.setFixedHeight(76)
 
+        # Configure the horizontal layout used by the header.
         layout = QHBoxLayout(self)
         layout.setContentsMargins(28, 10, 28, 10)
 
+        # Page title displayed on the left side of the header.
         self.title = QLabel("Dashboard")
         self.title.setObjectName("topbarTitle")
 
-        self.status = QLabel("●  UI INITIALIZED")
+        # Neutral initial status: no application health check has
+        # been performed at this stage.
+        self.status = QLabel("●  NOT CHECKED")
         self.status.setObjectName("systemStatus")
 
+        # Keep the page title on the left and the status indicator
+        # aligned to the right.
         layout.addWidget(self.title)
         layout.addStretch()
         layout.addWidget(self.status)
 
     def set_title(self, title: str) -> None:
         """
-        @summary
-        Update the title displayed in the application header.
+        Update the page title displayed in the header.
 
         @parameters
-        title : str
-            New title identifying the currently selected application page.
+        title:
+            Text identifying the currently selected application page.
 
         @returns
         None
         """
+
         self.title.setText(title)
 
     def set_status(self, status: str) -> None:
         """
-        @summary
-        Update the textual application status indicator.
+        Update the application status indicator.
+
+        The method only changes the displayed text. It does not
+        perform health checks or determine the actual gateway state.
 
         @parameters
-        status : str
-            Status description supplied by the application layer.
+        status:
+            Status text supplied by the application layer.
 
         @returns
         None
-
-        @notes
-        This method only updates the displayed text.
-        It does not independently verify gateway connectivity
-        or security subsystem health.
         """
+
         self.status.setText(status)
