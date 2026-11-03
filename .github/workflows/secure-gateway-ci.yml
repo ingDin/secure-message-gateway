@@ -45,8 +45,7 @@ jobs:
           python -c "import pytest_asyncio; print('pytest-asyncio:', pytest_asyncio.__version__)"
 
       - name: Run unit tests
-        run: |
-          python -m pytest -p pytest_asyncio.plugin tests/unit -q
+        run: python -m pytest tests/unit -q
 
   integration-tests:
     name: Integration Tests
@@ -79,8 +78,7 @@ jobs:
           python -m pytest --version
 
       - name: Run integration tests
-        run: |
-          python -m pytest -p pytest_asyncio.plugin tests/integration -q
+        run: python -m pytest tests/integration -q
 
   acceptance-tests:
     name: Acceptance Tests
@@ -104,8 +102,7 @@ jobs:
           python -m pip install pytest-asyncio==0.23.5
 
       - name: Run Behave acceptance tests
-        run: |
-          behave
+        run: behave
 
   build-package:
     name: Build Python Package
@@ -128,8 +125,7 @@ jobs:
           python -m pip install build
 
       - name: Build package
-        run: |
-          python -m build
+        run: python -m build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
