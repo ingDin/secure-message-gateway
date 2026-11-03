@@ -2,15 +2,14 @@
 
 <img src="docs/images/smg-architecture.png" alt="Secure Message Gateway architecture: PyQt6 UI, application layer, workers and SMG-CORE" width="950">
 
+*Note: This architecture illustration was generated with the assistance of AI and is used for documentation purposes.*
+
 **A Python Security Gateway with an Integrated PyQt6 Desktop Application**
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](https://github.com/ingDin/secure-message-gateway/actions)
 [![License](https://img.shields.io/badge/License-MIT-red.svg)](https://github.com/ingDin/secure-message-gateway)
 [![Release](https://img.shields.io/badge/Release-v1.0.0-green.svg)](https://github.com/ingDin/secure-message-gateway/releases/tag/v1.0.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-
-
-*Desktop interface, application layer, background workers and security gateway architecture.*
 
 </div>
 
@@ -594,9 +593,22 @@ The desktop interface provides visibility and control, while the gateway core re
 
 ---
 
-## 📄 13. License
+## 13. License
 
 This project is distributed under the **MIT License**.
 
 See the [LICENSE](https://github.com/ingDin/secure-message-gateway/blob/main/LICENSE) file for details.
 
+## 14. Disclaimer and Intended Use
+
+This project is provided for **educational, experimental, and demonstration purposes only**.
+
+Secure Message Gateway is a learning playground inspired by security concepts, patterns, and practices commonly found in the software industry. It is intended to demonstrate concepts such as message signing, HMAC validation, schema validation, audit logging, and security-related workflows.
+
+**This project is not intended or certified for production use, nor should it be relied upon to protect sensitive data, systems, or communications.**
+
+The software is provided "AS IS", without warranties or guarantees of any kind, express or implied. The author makes no guarantees regarding its security, reliability, correctness, or suitability for any particular purpose.
+
+To the maximum extent permitted by applicable law, the author shall not be held liable for any damages, data loss, security incidents, or other consequences arising from the use or inability to use this software.
+
+Users are responsible for evaluating the software and deciding whether it is appropriate for their intended use.
