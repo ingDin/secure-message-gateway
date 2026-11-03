@@ -1,6 +1,6 @@
 [project]
 name = "secure-message-gateway"
-version = "0.1.0"
+version = "1.1.0"
 description = "Secure message gateway with HMAC signing and validation"
 authors = [
     { name = "Ingrid Dinca", email = "dincaingrid24@gmail.com" }
