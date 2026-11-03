@@ -8,7 +8,7 @@
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](https://github.com/ingDin/secure-message-gateway/actions)
 [![License](https://img.shields.io/badge/License-MIT-red.svg)](https://github.com/ingDin/secure-message-gateway)
-[![Release](https://img.shields.io/badge/Release-v1.0.0-green.svg)](https://github.com/ingDin/secure-message-gateway/releases/tag/v1.0.0)
+[![Release](https://img.shields.io/badge/Release-v1.1.0-green.svg)](https://github.com/ingDin/secure-message-gateway/releases/tag/v1.1.0)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 
 </div>
