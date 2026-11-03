@@ -1,111 +1,137 @@
-name: Secure Gateway CI (Windows Only)
+
+name: Secure Message Gateway CI
 
 on:
-  workflow_dispatch:
   push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
   pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-
-  # -------------------------------------------------
-  # 1. Unit Tests (Windows)
-  # -------------------------------------------------
   unit-tests:
+    name: Unit Tests
     runs-on: windows-latest
-    name: Unit Tests (Windows)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"   # ⭐ pip caching
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
-          pip install pytest freezegun
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install pytest-asyncio==0.23.5
+
+      - name: Verify pytest installation
+        run: |
+          python -m pip show pytest
+          python -m pip show pytest-asyncio
+          python -c "import pytest_asyncio; print('pytest-asyncio:', pytest_asyncio.__version__)"
 
       - name: Run unit tests
-        run: pytest tests/unit -q
+        run: |
+          python -m pytest -p pytest_asyncio.plugin tests/unit -q
 
-  # -------------------------------------------------
-  # 2. Integration Tests (Windows)
-  # -------------------------------------------------
   integration-tests:
+    name: Integration Tests
     runs-on: windows-latest
-    name: Integration Tests (Windows)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"   # ⭐ pip caching
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
-          pip install pytest freezegun
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install pytest-asyncio==0.23.5
+
+      - name: Diagnose pytest environment
+        run: |
+          python --version
+          python -m pip show pytest
+          python -m pip show pytest-asyncio
+          python -c "import pytest; print('pytest:', pytest.__version__)"
+          python -c "import pytest_asyncio; print('pytest-asyncio:', pytest_asyncio.__version__)"
+          python -m pytest --version
 
       - name: Run integration tests
-        run: pytest tests/integration -q
+        run: |
+          python -m pytest -p pytest_asyncio.plugin tests/integration -q
 
-  # -------------------------------------------------
-  # 3. Acceptance Tests (Behave, Windows)
-  # -------------------------------------------------
   acceptance-tests:
+    name: Acceptance Tests
     runs-on: windows-latest
-    name: Acceptance Tests (Behave, Windows)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"   # ⭐ pip caching
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
-          pip install behave pytest freezegun
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install pytest-asyncio==0.23.5
 
-      - name: Run Behave
-        run: python -m behave --no-capture
+      - name: Run Behave acceptance tests
+        run: |
+          behave
 
-  # -------------------------------------------------
-  # 4. Build Package (Windows) — separat
-  # -------------------------------------------------
   build-package:
+    name: Build Python Package
     runs-on: windows-latest
-    name: Build Python Package (Windows)
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"   # ⭐ pip caching
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
-      - name: Install build tools
+      - name: Install build dependencies
         run: |
-          pip install --upgrade pip
-          pip install build
+          python -m pip install --upgrade pip
+          python -m pip install build
 
       - name: Build package
-        run: python -m build
+        run: |
+          python -m build
 
-      - name: Upload build artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: python-package

@@ -1,0 +1,118 @@
+
+QMainWindow, QWidget#centralWidget {
+    background-color: #0B1020;
+    color: #F1F5F9;
+    font-family: "Segoe UI";
+    font-size: 13px;
+}
+
+#sidebar {
+    background-color: #10162A;
+    border-right: 1px solid #252D45;
+}
+
+#logo {
+    color: #A78BFA;
+    font-size: 34px;
+    font-weight: bold;
+}
+
+#logoSubtitle {
+    color: #64748B;
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+#sectionLabel {
+    color: #64748B;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 8px;
+}
+
+#navButton {
+    color: #94A3B8;
+    background-color: transparent;
+    border: none;
+    border-radius: 9px;
+    padding: 12px;
+    text-align: left;
+}
+
+#navButton:hover {
+    background-color: #202943;
+    color: #FFFFFF;
+}
+
+#navButton:checked {
+    background-color: #302451;
+    color: #C4B5FD;
+    border-left: 3px solid #8B5CF6;
+}
+
+#sidebarFooter {
+    color: #64748B;
+    font-size: 10px;
+    padding: 10px;
+}
+
+#topbar {
+    background-color: #10162A;
+    border-bottom: 1px solid #252D45;
+}
+
+#topbarTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #F1F5F9;
+}
+
+#systemStatus {
+    color: #34D399;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+#page {
+    background-color: #0B1020;
+}
+
+#pageTitle {
+    color: #F8FAFC;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+#pageSubtitle {
+    color: #94A3B8;
+    font-size: 13px;
+}
+
+#statCard, #contentCard {
+    background-color: #171E35;
+    border: 1px solid #28324B;
+    border-radius: 13px;
+}
+
+#cardTitle {
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+#cardValue {
+    color: #F8FAFC;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+#cardSubtitle {
+    color: #64748B;
+    font-size: 11px;
+}
+
+#cardHeading {
+    color: #F1F5F9;
+    font-size: 15px;
+    font-weight: bold;
+}
