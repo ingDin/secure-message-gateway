@@ -251,20 +251,25 @@ The gateway follows a strict interaction pattern:
 
 ---
 
-## 4. Extensibility
+## **4. Extensibility & Development Roadmap**
 
-The gateway architecture supports targeted, version‑based evolution.  
-Future releases can introduce new capabilities without altering the core pipeline:
+The gateway architecture supports targeted, version-based evolution. Future releases can introduce new capabilities without fundamentally changing the core processing pipeline.
 
-- **monotonic buffer (parallel‑safe freshness model)**  
-  A v2.0 enhancement enabling out‑of‑order message handling, atomic counter commits, and high‑throughput parallel processing. Replaces sequential freshness validation with a buffer‑based commit mechanism.  
-  *Subsequent releases will introduce performance and load testing to validate parallel behavior under high message throughput.*
+- [ ] **Monotonic Buffer — Parallel-Safe Freshness Model (v2.0)**
+  
+  An enhancement enabling out-of-order message handling, atomic counter commits, and high-throughput parallel processing. Replaces sequential freshness validation with a buffer-based commit mechanism.
+  
+  *Future performance, load, and concurrency testing will validate parallel behavior under high message throughput.*
 
-- **web-based UI for gateway interaction (Playwright-tested)**  
-  A lightweight frontend for submitting messages, inspecting responses, and visualizing audit/freshness state. Enables automated end‑to‑end testing using Playwright to validate the full pipeline.
+- [x] **Desktop Application for Gateway Interaction (PyQt6)**
+  
+  Implemented a graphical desktop application for interacting with and monitoring the gateway. Provides message submission and simulation, validation status, audit inspection, configuration management, and integrated test execution.
+  
+  Uses background workers and Qt signals to execute gateway operations without blocking the user interface.
 
-- **external rotation triggers**  
-  Support for rotation signals originating outside the gateway (e.g., control systems, orchestration services, or environment-driven triggers), while preserving deterministic key lifecycle behavior.
+- [ ] **External Rotation Triggers**
+  
+  Support for key rotation signals originating outside the gateway (e.g., control systems, orchestration services, or environment-driven triggers), while preserving deterministic key lifecycle behavior.
 
 ---
 

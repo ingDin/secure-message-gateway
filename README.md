@@ -1,288 +1,602 @@
-<div align="center">
-<pre>
-╔════════════════════════════════════╗
-║      SMG-CORE: CRYPTO FABRIC       ║
-╠════════════════════════════════════╣
-║  • SCHEMA VALIDATION UNIT          ║
-║  • KEY ROTATION CONTROLLER         ║
-║  • HMAC-SHA256 COMPUTE ENGINE      ║
-║  • MONOTONIC COUNTER (ANTI-REPLAY) ║
-║  • AUDIT TRACE OUTPUT              ║
-╚════════════════════════════════════╝
+ <div align="center">
 
-⇣ VERIFIED • INTEGRITY-PROTECTED • REPLAY-SAFE ⇣
+<img src="docs/images/smg-architecture.png" alt="Secure Message Gateway architecture: PyQt6 UI, application layer, workers and SMG-CORE" width="950">
 
-SECURE MESSAGE GATEWAY — SMG‑CORE v1
-Deterministic Crypto • Monotonic Counter • Full Audit Trail
-</pre>
+**A Python Security Gateway with an Integrated PyQt6 Desktop Application**
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue.svg)](https://github.com/ingDin/secure-message-gateway/actions)
-[![License](https://img.shields.io/badge/License-MIT-red.svg)](https://github.com/ingDin/secure-message-gateway?tab=MIT-1-ov-file)
-[![Release v1.0.0](https://img.shields.io/badge/release-v1.0.0-green.svg)](https://github.com/ingDin/secure-message-gateway/releases/tag/v1.0.0)
+[![License](https://img.shields.io/badge/License-MIT-red.svg)](https://github.com/ingDin/secure-message-gateway)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-green.svg)](https://github.com/ingDin/secure-message-gateway/releases/tag/v1.0.0)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 
+
+*Desktop interface, application layer, background workers and security gateway architecture.*
 
 </div>
 
 ---
 
-## 🔐 What is Secure Message Gateway?
+## 🔐 1. Overview
 
-**Secure Message Gateway** is a minimal, extensible Python security layer designed for systems that require:
+**Secure Message Gateway (SMG)** is a Python-based message security system that combines a cryptographic processing engine with a graphical desktop application.
 
-- **Message integrity** via HMAC  
-- **Freshness protection** (anti‑replay counters)  
-- **Async key loading & rotation**  
-- **Audit logging** for every operation  
-- **Strict JSON schema validation**  
-- **Full test coverage** (unit, integration, acceptance)
+The system provides a controlled environment for generating, processing, validating, and auditing messages.
 
-It is built for **safety‑critical environments**, embedded systems, and distributed architectures where message trust is mandatory.
+Instead of interacting directly with the gateway's internal modules, users can operate the system through a PyQt6 desktop interface.
+
+### Main capabilities
+
+- **Message Integrity** — HMAC-SHA256 authentication.
+- **Schema Validation** — strict JSON message structure validation.
+- **Anti-Replay Protection** — monotonic counter and freshness validation.
+- **Key Management** — key loading, archival, and rotation support.
+- **Asynchronous Processing** — background execution without blocking the UI.
+- **Audit Logging** — structured JSON event records.
+- **Desktop Monitoring** — graphical access to gateway activity and validation results.
+- **Automated Testing** — functional tests executed through pytest or the desktop interface.
 
 ---
 
-## 📦 Installation
+## 🖥️ 2. Desktop Application
 
-To set up the secure-message-gateway in a clean, isolated environment:
+The desktop application is built with **PyQt6** and provides a graphical control and monitoring interface for the gateway.
 
-```bash
-pip install -r requirements.txt
-pip install -e .
-python -m venv .venv
+It is organized into six main pages.
+
+### 2.1 Dashboard
+
+<text color="secondary" size="sm">Gateway overview and activity monitoring</text>
+
+The Dashboard provides a quick overview of gateway activity.
+
+- Accepted Messages
+- Rejected Messages
+- Validation Success Rate
+- Audit Events
+- Message Processing Activity
+- Security Component Status
+
+The dashboard reads activity information from the configured audit JSON file and refreshes its metrics periodically.
+
+### 2.2 Message Simulator
+
+<text color="secondary" size="sm">Message generation and processing</text>
+
+The Message Simulator allows users to interact with the gateway without writing additional scripts.
+
+Available operations:
+
+- Generate an authenticated test message.
+- Edit the generated JSON payload.
+- Submit a message for processing.
+- View whether the message was accepted or rejected.
+- Inspect the processing result and rejection reason.
+
+Message generation and processing are separate operations. Generating a message does not automatically submit it to the gateway.
+
+### 2.3 Security Validation
+
+<text color="secondary" size="sm">Security validation status</text>
+
+This page displays the results reported by the message-processing workflow.
+
+It presents the status of:
+
+- JSON Schema Validation
+- HMAC Verification
+- Freshness Validation
+
+The validation sequence is:
+
+`Schema → HMAC → Freshness`
+
+The page displays validation results; it does not independently execute the security pipeline.
+
+### 2.4 Audit Viewer
+
+<text color="secondary" size="sm">Event inspection and audit records</text>
+
+The Audit Viewer provides access to recent gateway events.
+
+Features:
+
+- Load the latest 100 valid JSON records.
+- Search through the loaded records.
+- Refresh audit data.
+- Double-click a record to inspect its JSON payload.
+
+Audit file reading is performed in a background worker to keep the interface responsive.
+
+### 2.5 Test Execution
+
+<text color="secondary" size="sm">Functional test execution</text>
+
+The Test Execution page allows users to run the project's pytest suite directly from the desktop application.
+
+It displays:
+
+- Total tests
+- Passed tests
+- Failed tests
+- Skipped tests
+- Individual test results
+
+Tests execute in a separate thread, so the desktop interface remains responsive.
+
+### 2.6 Configuration
+
+<text color="secondary" size="sm">Gateway configuration management</text>
+
+The Configuration page provides a graphical way to manage gateway settings.
+
+Configuration categories:
+
+| Category | Settings |
+|---|---|
+| General | Version and environment |
+| Cryptography | Key files, archive and rotation settings |
+| Freshness | Counter file, initial counter and increment limits |
+| Logging | Log file path |
+| Audit | Audit logging enablement and output path |
+
+The interface supports reloading and saving configuration.
+
+Configuration validation checks required values, paths, cryptographic settings, and freshness limits before saving.
+
+---
+
+## 🏗️ 3. System Architecture
+
+The project uses a layered architecture that separates the graphical interface, application coordination, and security processing.
+
+This separation makes the application easier to maintain, test, and extend.
+
+### 3.1 Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph UI["PRESENTATION LAYER — PyQt6"]
+        MW["MainWindow"]
+        DB["Dashboard"]
+        MS["Message Simulator"]
+        SV["Security Validation"]
+        AV["Audit Viewer"]
+        TE["Test Execution"]
+        CF["Configuration"]
+        MW --> DB
+        MW --> MS
+        MW --> SV
+        MW --> AV
+        MW --> TE
+        MW --> CF
+    end
+
+    subgraph APP["APPLICATION LAYER"]
+        GS["GatewayService"]
+        MWK["MessageWorker"]
+        ALW["AuditLogWorker"]
+        SIG["Qt Signals"]
+    end
+
+    subgraph CORE["SECURITY CORE — SMG-CORE"]
+        GA["GatewayAsync"]
+        SC["Schema Validation"]
+        HM["HMAC-SHA256"]
+        FR["Freshness Manager"]
+        KM["Key Management"]
+        AU["Audit Logger"]
+        GA --> SC --> HM --> FR
+        GA --> KM
+        GA --> AU
+    end
+
+    UI --> APP
+    GS --> CORE
+    MWK --> GS
+    ALW --> AU
+    MWK --> SIG
+    SIG --> UI
 ```
 
-This installs the gateway package and exposes all core subsystems:
+### 3.2 Presentation Layer — Desktop UI
 
-- HMAC engine (cryptographic integrity)
-- Freshness Manager (monotonic counter + replay protection)
-- Key Loader & Rotation (key lifecycle)
-- Audit Logger (append‑only JSON-lines)
-- GatewayAsync pipeline (deterministic orchestration)
+The presentation layer is responsible for everything the user sees and interacts with.
+
+Main responsibilities:
+
+- Display application pages.
+- Collect user input.
+- Present message-processing results.
+- Display gateway metrics and security status.
+- Allow configuration management.
+- Trigger operations through application-level services.
+
+The `MainWindow` coordinates the main interface using a sidebar, top bar, and stacked page layout.
+
+Individual UI components communicate through Qt signals and slots.
+
+**Important:** The UI does not implement cryptographic validation itself. It delegates processing to the application layer.
+
+### 3.3 Application Layer — Intermediate Layer
+
+The application layer connects the desktop interface to the security gateway.
+
+It contains the service adapter and background workers.
+
+**GatewayService**
+
+Acts as the adapter between the UI and the gateway core.
+
+Responsibilities:
+
+- Load gateway configuration.
+- Resolve configured file paths.
+- Initialize the gateway when needed.
+- Expose the asynchronous message-processing operation.
+
+**MessageWorker**
+
+Executes message processing outside the main UI thread.
+
+Its workflow:
+
+1. Receives a message from the application.
+2. Calls `GatewayService`.
+3. Runs the asynchronous processing operation using `asyncio`.
+4. Emits the result or an error through Qt signals.
+
+**AuditLogWorker**
+
+Reads audit records in the background.
+
+It loads recent JSON entries without making the desktop interface wait for file operations.
+
+**Qt Signals and Slots**
+
+Workers communicate their results back to the UI through signals.
+
+This allows the interface to update its pages when processing finishes.
+
+### 3.4 Security Layer — SMG-CORE
+
+The security core contains the actual message-processing logic.
+
+It is responsible for:
+
+- JSON Schema validation.
+- HMAC-SHA256 verification.
+- Freshness and counter validation.
+- Key management.
+- Audit event generation.
+- Asynchronous gateway orchestration.
+
+The gateway core remains independent of the graphical interface.
+
+This means the same processing functionality can be accessed through the application service layer without placing security logic inside UI components.
+
+### 3.5 Why Use Background Workers?
+
+Message processing and audit file reading can take time.
+
+Running these operations directly on the UI thread could make the application unresponsive.
+
+SMG uses Qt worker threads for these operations.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as PyQt6 UI
+    participant Worker as MessageWorker
+    participant Service as GatewayService
+    participant Core as GatewayAsync
+
+    User->>UI: Submit JSON message
+    UI->>Worker: Start processing
+    Worker->>Service: Process message
+    Service->>Core: Async gateway processing
+    Core-->>Service: Processing result
+    Service-->>Worker: Return result
+    Worker-->>UI: Emit Qt signal
+    UI-->>User: Display result
+```
+
+The UI remains available while the worker executes the operation.
 
 ---
 
-## 🚀 Get Started
-### 🔑 Key Material & Environment Binding
+## 🔄 4. Message Processing Pipeline
 
-Before running the gateway, users must create a file named **`keys.json`** in the project directory. This file **must be created by the user** and populated with environment‑specific keys in **hexadecimal format**. All keys must be **32 bytes (64 hex characters)** because the gateway uses HMAC‑SHA256.
+Every submitted message passes through the gateway's security pipeline.
 
-The required `keys.json` structure is:
+```text
+             INPUT MESSAGE
+                   │
+                   ▼
+          JSON SCHEMA VALIDATION
+                   │
+                   ▼
+            HMAC VERIFICATION
+                   │
+                   ▼
+          FRESHNESS VALIDATION
+                   │
+                   ▼
+           GATEWAY PROCESSING
+                   │
+             ┌─────┴─────┐
+             ▼           ▼
+          ACCEPTED     REJECTED
+             │           │
+             └─────┬─────┘
+                   ▼
+              AUDIT EVENT
+```
+
+### Validation Components
+
+| Component | Responsibility |
+|---|---|
+| Schema Validator | Checks message structure |
+| HMAC Engine | Verifies message integrity |
+| Freshness Manager | Checks counter progression and replay protection |
+| Key Manager | Handles key loading and rotation |
+| Audit Logger | Records processing events |
+
+A message that fails validation is rejected, and the corresponding result is made available to the application.
+
+---
+
+## 🔄 5. Freshness and Anti-Replay Protection
+
+The freshness subsystem uses a monotonic counter to detect invalid message progression and replay attempts.
+
+The counter is stored in the configured freshness file.
+
+Its initial value depends on:
+
+- The configured `initial_counter`.
+- The existing counter file.
+- The `reset_on_start` policy.
+
+### Counter Initialization
+
+If the counter file exists and is loaded, the next incoming message must respect the configured increment limits.
+
+For example:
 
 ```json
 {
-  "dev_key":   "<64-hex-dev-key>",
-  "stage_key": "<64-hex-stage-key>",
-  "prod_key":  "<64-hex-prod-key>"
+  "counter": 37
 }
 ```
 
-### 🔧 Environment Selection
+With:
 
-The active key is selected based on the environment field inside `config.json`:
 ```json
 {
-  "environment": "dev"
-}
-```
-
-Valid values are:
-
-- `"dev"` → loads dev_key
-- `"stage"` → loads stage_key
-- `"prod"` → loads prod_key
-
-This mechanism ensures deterministic key selection, **strict environment separation**, and predictable behavior during validation and rotation.
-
----
-
-## 🔄 Freshness Counter Basics
-
-The freshness subsystem stores its monotonic counter in:
-
-`config/freshness.json`
-
-At startup, the gateway decides which counter value to use based on:
-
-- the config (`initial_counter`)
-- the stored file (`freshness.json`)
-- the reset policy (`reset_on_start`)
-
-This directly affects the behaviour of `python src/main`.
-
-
-## 🔍 Freshness Initialization Rules
-
-The gateway enforces increment-based freshness validation as soon as a counter value exists, regardless of how that value was established (loaded or bootstrapped).
-
-### When freshness.json Exists
-
-If `freshness.json` exists, the stored counter is loaded and the very first incoming message must respect the increment rules:
-- min_increment = 1
-- max_increment = 5
-
-Any violation results in `FRESHNESS_FAIL`.
-
-### When freshness.json Does NOT Exist (Bootstrap)
-
-If the file does not exist:
-- `initial_counter = "auto"` → the first message defines the counter.
-- `initial_counter = <numeric>` → the counter is set from config.
-
-After bootstrap, increment rules apply immediately to the next message.
-
-### When freshness.json Exists AND reset_on_start = true
-
-If `freshness.json` exists but `reset_on_start = true`, the file MUST be deleted at startup.
-After deletion, the gateway behaves exactly as if no counter file ever existed:
-- Bootstrap is triggered.
-- The initial counter is taken from config (`initial_counter = "auto"` or numeric).
-- After bootstrap, increment rules apply immediately.
-
-## Examples
-
-1. File Exists
-
-`freshness.json`:
-
-```json
-{"counter": 37}
-```
-
-The first incoming message must have a counter between 38 and 42.
-Otherwise → `FRESHNESS_FAIL`.
-
-2. Bootstrap Case
-
-`config.json`:
-```json
-{
-  "initial_counter": "auto",
   "min_increment": 1,
   "max_increment": 5
 }
 ```
 
-Message 1: incoming = 100 → bootstrap sets counter = 100  
-Message 2: must be between 101 and 105 → otherwise `FRESHNESS_FAIL`
+The next valid counter must be between `38` and `42`.
 
-### Final Statement
+### Bootstrap Mode
 
-Freshness rules apply immediately after the counter is established — whether loaded from `freshness.json` or created via bootstrap.
+If the counter file does not exist:
+
+- `initial_counter: "auto"` allows the first incoming message to establish the counter.
+- A numeric `initial_counter` initializes the counter from configuration.
+
+After the counter has been established, increment validation applies to subsequent messages.
+
+If `reset_on_start` is enabled, the existing counter file is deleted during startup and the counter is initialized again according to the configured initial value.
 
 ---
 
-## 📈 Runtime Execution and Audit Logging
+## 📝 6. Audit Logging
 
-Running the gateway benchmark with:
+SMG records gateway activity using JSON Lines (`JSON`).
 
-`python src/main.py`
+Each line represents one structured event.
 
-executes the full processing pipeline and prints performance statistics to the console. A typical output looks like:
+Example:
 
-- **Total messages processed:** 5000  
-- **Total time:** 14.0653 seconds  
-- **Throughput:** 355.48 messages/sec  
-
-This reflects the end‑to‑end processing speed of the gateway, including HMAC validation, freshness checks, rotation logic, and audit logging.
-
-### 📝 Audit Log Entries
-
-All processed messages are recorded in `logs/audit.log`.  
-Each entry is stored as a single JSON line, making the log easy to parse, stream, or export.
-
-### Example
-
-```log 
-{"timestamp": "2026-09-29T21:03:38.850937+00:00", "event": "MESSAGE_ACCEPTED", "payload": {"id": 1, "counter": 1, "msg": "auto-msg-1"}}
-{"timestamp": "2026-09-29T21:03:38.860673+00:00", "event": "MESSAGE_ACCEPTED", "payload": {"id": 2, "counter": 2, "msg": "auto-msg-2"}}
+```json
+{
+  "timestamp": "2026-09-29T21:03:38.850937+00:00",
+  "event": "MESSAGE_ACCEPTED",
+  "payload": {
+    "id": 1,
+    "counter": 1,
+    "msg": "auto-msg-1"
+  }
+}
 ```
 
-Each log entry contains:
+Typical event information includes:
 
-- **timestamp** — precise UTC time of processing  
-- **event** — the gateway event type (e.g., `MESSAGE_ACCEPTED`)  
-- **payload** — message metadata including:
-  - `id` — message identifier  
-  - `counter` — freshness counter value  
-  - `msg` — message content  
+- **Timestamp** — event time.
+- **Event** — operation result or event type.
+- **Payload** — message metadata.
 
-This format ensures the audit log is fully machine‑readable and suitable for monitoring, replay, or compliance pipelines.
+The Dashboard uses the audit file for activity metrics, while the Audit Viewer provides access to recent records.
 
-## 📌 Notes
-
-- The gateway logs **every accepted message**, making it easy to track counter progression.  
-- The audit log grows line‑by‑line and can be exported or analyzed with standard tools (`jq`, Python, CSV exporters).  
-- The benchmark script is designed for high throughput testing and demonstrates the gateway’s performance under load.
+The audit file is also useful for external inspection and analysis with tools such as Python or `jq`.
 
 ---
 
-## 🧪 Test Coverage Overview
+## 📦 7. Installation
 
-The project currently includes **functional tests only**, implemented with `pytest` and organized into three categories:
+### Requirements
 
-### 1. Unit Tests
-Unit tests validate individual components in isolation.  
-They ensure that core modules (HMAC validation, freshness logic, configuration parsing, audit logging, etc.) behave correctly without interacting with other subsystems.
+- Python 3.10 or newer.
+- pip.
+- A supported operating system for PyQt6.
 
-### 2. Integration Tests
-Integration tests verify that multiple components work correctly together.  
-These tests cover interactions such as:
-- HMAC + freshness validation
-- counter progression + audit logging
-- configuration + runtime behavior
+### Clone the Repository
 
-They confirm that the gateway behaves consistently when subsystems are combined.
+```bash
+git clone https://github.com/ingDin/secure-message-gateway.git
+cd secure-message-gateway
+```
 
-### 3. Acceptance Tests
-Acceptance tests validate the full message-processing pipeline from the perspective of a real user or system.  
-They check:
-- startup initialization
-- sequential message handling
-- correct counter increments
-- complete audit trail generation
+### Create a Virtual Environment
 
-These tests ensure the gateway meets its functional requirements end‑to‑end.
+```bash
+python -m venv .venv
+```
 
----
+Activate it:
 
-## ▶️ Running the Test Suite
+**Windows**
 
-All functional tests (unit, integration, acceptance) are executed with:
+```bash
+.venv\Scripts\activate
+```
 
-`pytest tests/`
+**Linux / macOS**
 
----
+```bash
+source .venv/bin/activate
+```
 
-## ⚠️ Note on Performance Testing
+### Install Dependencies
 
-The project **does not include performance, load, stress, or concurrency tests**.  
-Only functional correctness is covered at this stage.
+```bash
+pip install -e ".[dev]"
+```
 
----
-
-## 📚 Documentation
-
-**Architecture Overview**  
-[docs/ARHITECTURE.md](docs/ARHITECTURE.md)  
-High‑level system design, pipeline, and execution model.
-
-**Component Architecture**  
-[docs/COMPONENTS.md](docs/COMPONENTS.md)  
-Module responsibilities, interfaces, and interactions.
-
-**Security Model**  
-[docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md)  
-HMAC integrity, freshness protection, and audit guarantees.
-
-**Test Strategy**  
-[docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md)  
-Functional tests only: unit, integration, acceptance.
-
+This installs the project and its development dependencies defined in `pyproject.toml`.
 
 ---
 
-## 🔐 License & Responsible Use
+## 🚀 8. Running the Application
 
-This project is distributed under the **MIT License**, a permissive open‑source license that allows reuse, modification, and redistribution with minimal restrictions.
+Start the desktop application from the project root:
 
-For full legal details, see the license here:  
-**[MIT License →](https://github.com/ingDin/secure-message-gateway/blob/main/LICENSE)**
+```bash
+python src/main.py
+```
+
+Alternative launch command:
+
+```bash
+cd src
+python -m desktop_app.main
+```
+
+The application loads its settings from:
+
+```text
+config/config.json
+```
+
+### First-Time Configuration
+
+Before processing messages:
+
+1. Open the Configuration page.
+2. Check the selected environment.
+3. Configure the required key file paths.
+4. Review freshness and counter settings.
+5. Check audit and logging paths.
+6. Save the configuration.
+
+Make sure the required key material exists and is valid for the selected environment.
+
+If the freshness counter file does not exist and `initial_counter` is set to `"auto"`, initialize the counter through an accepted incoming message before relying on generated test messages that require an established counter.
+
+---
+
+## 🧪 9. Running Tests
+
+Run the functional test suite from the project root:
+
+```bash
+pytest
+```
+
+The desktop application also provides a **Test Execution** page for running the same test suite and displaying individual results.
+
+### Test Categories
+
+- **Unit Tests** — individual component behavior.
+- **Integration Tests** — interactions between gateway components.
+- **Acceptance Tests** — end-to-end message-processing behavior.
+
+The project also includes a GitHub Actions workflow for continuous integration.
+
+> The current test suite focuses on functional correctness. Performance, load, stress, and concurrency testing are not included.
+
+---
+
+## 🛠️ 10. Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Python 3.10+ | Main programming language |
+| PyQt6 | Desktop graphical interface |
+| asyncio | Asynchronous execution |
+| cryptography | Cryptographic operations |
+| jsonschema | JSON Schema validation |
+| aiofiles | Asynchronous file operations |
+| python-json-logger | Structured logging |
+| pytest | Automated testing |
+| GitHub Actions | Continuous integration |
+
+---
+
+## 📁 11. Project Structure
+
+```text
+secure-message-gateway/
+│
+├── config/
+│   └── config.json
+│
+├── src/
+│   ├── desktop_app/
+│   │   ├── pages/
+│   │   ├── components/
+│   │   ├── workers/
+│   │   └── main.py
+│   │
+│   ├── secure_gateway/
+│   │
+│   └── main.py
+│
+├── tests/
+│
+├── .github/
+│   └── workflows/
+│
+├── pyproject.toml
+└── README.md
+```
+
+*This overview shows the main project areas; additional modules and supporting files are omitted.*
+
+---
+
+## 🔐 12. Security and Design Principles
+
+SMG is designed around separation of responsibilities.
+
+- **Separation of Concerns** — UI, application coordination, and gateway processing are kept separate.
+- **Cryptographic Integrity** — HMAC-SHA256 is used for message authentication.
+- **Replay Protection** — freshness checks use monotonic counter progression.
+- **Structured Auditing** — gateway events are recorded in JSON format.
+- **Responsive UI** — background workers handle time-consuming operations.
+- **Testability** — gateway logic and desktop operations are organized into separate components.
+
+The desktop interface provides visibility and control, while the gateway core remains responsible for security decisions.
+
+---
+
+## 📄 13. License
+
+This project is distributed under the **MIT License**.
+
+See the [LICENSE](https://github.com/ingDin/secure-message-gateway/blob/main/LICENSE) file for details.
+
