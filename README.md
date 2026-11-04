@@ -23,7 +23,7 @@ The system provides a controlled environment for generating, processing, validat
 
 Instead of interacting directly with the gateway's internal modules, users can operate the system through a PyQt6 desktop interface.
 
-### Main capabilities
+### Main Capabilities
 
 - **Message Integrity** — HMAC-SHA256 authentication.
 - **Schema Validation** — strict JSON message structure validation.
@@ -44,7 +44,7 @@ It is organized into six main pages.
 
 ### 2.1 Dashboard
 
-<text color="secondary" size="sm">Gateway overview and activity monitoring</text>
+*Gateway overview and activity monitoring*
 
 The Dashboard provides a quick overview of gateway activity.
 
@@ -59,7 +59,7 @@ The dashboard reads activity information from the configured audit JSON file and
 
 ### 2.2 Message Simulator
 
-<text color="secondary" size="sm">Message generation and processing</text>
+*Message generation and processing*
 
 The Message Simulator allows users to interact with the gateway without writing additional scripts.
 
@@ -75,7 +75,7 @@ Message generation and processing are separate operations. Generating a message 
 
 ### 2.3 Security Validation
 
-<text color="secondary" size="sm">Security validation status</text>
+*Security validation status*
 
 This page displays the results reported by the message-processing workflow.
 
@@ -93,7 +93,7 @@ The page displays validation results; it does not independently execute the secu
 
 ### 2.4 Audit Viewer
 
-<text color="secondary" size="sm">Event inspection and audit records</text>
+*Event inspection and audit records*
 
 The Audit Viewer provides access to recent gateway events.
 
@@ -108,7 +108,7 @@ Audit file reading is performed in a background worker to keep the interface res
 
 ### 2.5 Test Execution
 
-<text color="secondary" size="sm">Functional test execution</text>
+*Functional test execution*
 
 The Test Execution page allows users to run the project's pytest suite directly from the desktop application.
 
@@ -124,7 +124,7 @@ Tests execute in a separate thread, so the desktop interface remains responsive.
 
 ### 2.6 Configuration
 
-<text color="secondary" size="sm">Gateway configuration management</text>
+*Gateway configuration management*
 
 The Configuration page provides a graphical way to manage gateway settings.
 
@@ -144,13 +144,35 @@ Configuration validation checks required values, paths, cryptographic settings, 
 
 ---
 
-## 🏗️ 3. System Architecture
+## 🎬 3. Application Demo
+
+The following recording provides a walkthrough of the Secure Message Gateway installation, desktop application, message-processing workflow, and testing capabilities.
+
+**Application walkthrough:**
+
+[▶ Watch the Secure Message Gateway Demo](docs/videos/smg-demo-optimized.mp4)
+
+The demonstration covers:
+
+- Project installation and environment setup.
+- Desktop application launch.
+- Gateway dashboard and activity monitoring.
+- Authenticated message generation and processing.
+- Security validation and audit inspection.
+- Automated test execution.
+- Gateway configuration management.
+
+The recording demonstrates the application's main workflows and provides a practical overview of how the different components interact.
+
+---
+
+## 🏗️ 4. System Architecture
 
 The project uses a layered architecture that separates the graphical interface, application coordination, and security processing.
 
 This separation makes the application easier to maintain, test, and extend.
 
-### 3.1 Architecture Overview
+### 4.1 Architecture Overview
 
 ```mermaid
 flowchart TB
@@ -197,7 +219,7 @@ flowchart TB
     SIG --> UI
 ```
 
-### 3.2 Presentation Layer — Desktop UI
+### 4.2 Presentation Layer — Desktop UI
 
 The presentation layer is responsible for everything the user sees and interacts with.
 
@@ -216,7 +238,7 @@ Individual UI components communicate through Qt signals and slots.
 
 **Important:** The UI does not implement cryptographic validation itself. It delegates processing to the application layer.
 
-### 3.3 Application Layer — Intermediate Layer
+### 4.3 Application Layer — Intermediate Layer
 
 The application layer connects the desktop interface to the security gateway.
 
@@ -256,7 +278,7 @@ Workers communicate their results back to the UI through signals.
 
 This allows the interface to update its pages when processing finishes.
 
-### 3.4 Security Layer — SMG-CORE
+### 4.4 Security Layer — SMG-CORE
 
 The security core contains the actual message-processing logic.
 
@@ -273,7 +295,7 @@ The gateway core remains independent of the graphical interface.
 
 This means the same processing functionality can be accessed through the application service layer without placing security logic inside UI components.
 
-### 3.5 Why Use Background Workers?
+### 4.5 Why Use Background Workers?
 
 Message processing and audit file reading can take time.
 
@@ -303,7 +325,7 @@ The UI remains available while the worker executes the operation.
 
 ---
 
-## 🔄 4. Message Processing Pipeline
+## 🔄 5. Message Processing Pipeline
 
 Every submitted message passes through the gateway's security pipeline.
 
@@ -345,7 +367,7 @@ A message that fails validation is rejected, and the corresponding result is mad
 
 ---
 
-## 🔄 5. Freshness and Anti-Replay Protection
+## 🔄 6. Freshness and Anti-Replay Protection
 
 The freshness subsystem uses a monotonic counter to detect invalid message progression and replay attempts.
 
@@ -393,9 +415,9 @@ If `reset_on_start` is enabled, the existing counter file is deleted during star
 
 ---
 
-## 📝 6. Audit Logging
+## 📝 7. Audit Logging
 
-SMG records gateway activity using JSON Lines (`JSON`).
+SMG records gateway activity using JSON Lines (`JSONL`).
 
 Each line represents one structured event.
 
@@ -425,7 +447,7 @@ The audit file is also useful for external inspection and analysis with tools su
 
 ---
 
-## 📦 7. Installation
+## 📦 8. Installation
 
 ### Requirements
 
@@ -470,7 +492,7 @@ This installs the project and its development dependencies defined in `pyproject
 
 ---
 
-## 🚀 8. Running the Application
+## 🚀 9. Running the Application
 
 Start the desktop application from the project root:
 
@@ -508,7 +530,7 @@ If the freshness counter file does not exist and `initial_counter` is set to `"a
 
 ---
 
-## 🧪 9. Running Tests
+## 🧪 10. Running Tests
 
 Run the functional test suite from the project root:
 
@@ -530,7 +552,7 @@ The project also includes a GitHub Actions workflow for continuous integration.
 
 ---
 
-## 🛠️ 10. Technology Stack
+## 🛠️ 11. Technology Stack
 
 | Technology | Purpose |
 |---|---|
@@ -546,13 +568,20 @@ The project also includes a GitHub Actions workflow for continuous integration.
 
 ---
 
-## 📁 11. Project Structure
+## 📁 12. Project Structure
 
 ```text
 secure-message-gateway/
 │
 ├── config/
 │   └── config.json
+│
+├── docs/
+│   ├── images/
+│   │   └── smg-architecture.png
+│   │
+│   └── videos/
+│       └── smg-demo-optimized.mp4
 │
 ├── src/
 │   ├── desktop_app/
@@ -578,7 +607,7 @@ secure-message-gateway/
 
 ---
 
-## 🔐 12. Security and Design Principles
+## 🔐 13. Security and Design Principles
 
 SMG is designed around separation of responsibilities.
 
@@ -593,13 +622,15 @@ The desktop interface provides visibility and control, while the gateway core re
 
 ---
 
-## 13. License
+## 📄 14. License
 
 This project is distributed under the **MIT License**.
 
 See the [LICENSE](https://github.com/ingDin/secure-message-gateway/blob/main/LICENSE) file for details.
 
-## 14. Disclaimer and Intended Use
+---
+
+## ⚠️ 15. Disclaimer and Intended Use
 
 This project is provided for **educational, experimental, and demonstration purposes only**.
 
