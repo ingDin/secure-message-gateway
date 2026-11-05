@@ -49,8 +49,7 @@ from PyQt6.QtWidgets import (
     QWidget,
     QHBoxLayout,
     QVBoxLayout,
-    QStackedWidget,
-    QLabel,
+    QStackedWidget
 )
 
 from desktop_app.ui.sidebar import Sidebar
@@ -64,77 +63,8 @@ from desktop_app.ui.pages.test_execution import TestExecutionPage
 from desktop_app.ui.pages.configuration import ConfigurationPage
 
 
-class PlaceholderPage(QWidget):
-    """
-    Provide a reusable placeholder for unfinished application sections.
-
-    @summary
-    Displays a page heading and explanatory description using the
-    application's standard page layout and stylesheet conventions.
-
-    @architecture
-    - Extends QWidget.
-    - Uses QVBoxLayout for vertical content organization.
-    - Uses centralized QSS object names for visual styling.
-
-    @parameters
-    title : str
-        Heading displayed on the placeholder page.
-
-    description : str
-        Explanatory text displayed below the heading.
-
-    parent : QWidget | None
-        Optional parent widget in the Qt object hierarchy.
-
-    @design
-    This component is presentation-only. It does not implement
-    application-specific processing or business logic.
-    """
-
-    def __init__(
-        self,
-        title: str,
-        description: str,
-        parent: QWidget | None = None,
-    ) -> None:
-        """
-        Initialize the placeholder page.
-
-        @parameters
-        title : str
-            Page heading.
-
-        description : str
-            Description displayed below the heading.
-
-        parent : QWidget | None
-            Optional parent widget.
-
-        @returns
-        None
-        """
-
-        super().__init__(parent)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 30, 32, 30)
-
-        heading = QLabel(title)
-        heading.setObjectName("pageTitle")
-
-        subtitle = QLabel(description)
-        subtitle.setObjectName("pageSubtitle")
-
-        layout.addWidget(heading)
-        layout.addWidget(subtitle)
-        layout.addStretch()
-
-
 class MainWindow(QMainWindow):
     """
-    Coordinate the primary Secure Message Gateway desktop interface.
-
     @summary
     Creates and manages the main application window, registers
     application pages, coordinates navigation and synchronizes
@@ -193,9 +123,6 @@ class MainWindow(QMainWindow):
         "connected": (
             "color: #10B981; font-weight: bold;"
         ),
-        "checking": (
-            "color: #FBBF24; font-weight: bold;"
-        ),
         "error": (
             "color: #F87171; font-weight: bold;"
         ),
@@ -206,7 +133,6 @@ class MainWindow(QMainWindow):
 
     STATUS_LABELS = {
         "connected": "●  GATEWAY CONNECTED",
-        "checking": "●  GATEWAY CHECKING",
         "error": "●  GATEWAY ERROR",
         "unchecked": "●  NOT CHECKED",
     }
@@ -635,13 +561,6 @@ class MainWindow(QMainWindow):
             for key, value in statuses.items()
         }
 
-        # A validation stage is considered completed when it reports
-        # either a successful or failed result.
-        completed = any(
-            value in {"passed", "failed"}
-            for value in normalized.values()
-        )
-
         # Successful gateway validation requires all three stages
         # to report Passed.
         all_passed = all(
@@ -662,9 +581,6 @@ class MainWindow(QMainWindow):
         elif any_failed:
             gateway_status = "Error"
 
-        elif completed:
-            gateway_status = "Pending"
-
         else:
             gateway_status = "Not checked"
 
@@ -682,9 +598,6 @@ class MainWindow(QMainWindow):
 
         elif any_failed:
             self._set_topbar_status("error")
-
-        elif completed:
-            self._set_topbar_status("checking")
 
         else:
             self._set_topbar_status("unchecked")
