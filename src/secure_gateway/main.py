@@ -90,7 +90,7 @@ async def main():
 
     gateway = GatewayAsync(config)
 
-    total_messages = 5000  # adjust freely
+    total_messages = 250  # adjust freely
 
     start_time = time.perf_counter()
 
