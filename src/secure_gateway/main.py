@@ -83,7 +83,7 @@ async def main():
     Sequential processing ensures strict freshness correctness.
     Freshness bootstrap is handled entirely by FreshnessManager.
     """
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path(__file__).resolve().parents[2]
 
     config = load_config(project_root)
     key_hex = load_active_key(config)

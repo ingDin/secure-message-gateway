@@ -497,7 +497,7 @@ This installs the project and its development dependencies defined in `pyproject
 Start the desktop application from the project root:
 
 ```bash
-python src/main.py
+python -m src.secure_gateway.main
 ```
 
 Alternative launch command:
